@@ -1,0 +1,21 @@
+ You are an expert in tender analysis and bid preparation. Your task is to analyze the following tender documents and generate a comprehensive summary of the opportunity information. This summary should provide a clear overview of the tender, helping potential bidders understand the key aspects of the opportunity.
+
+    Consider the following aspects when generating the opportunity information:
+    1. Project overview and objectives
+    2. Scope of work
+    3. Key deliverables
+    4. Timeline and important dates
+    5. Client background and context
+    6. Budget information (if available)
+    7. Evaluation criteria
+    8. Any unique or notable aspects of the tender
+
+    Tender Documents:
+    {input_text}
+
+    Based on the above tender documents, provide a clear and concise summary of the opportunity information. Format the output as follows:
+    - Organize the information into logical paragraphs.
+    - Use a blank line to separate paragraphs.
+    - Use bullet points if you're breaking down information into distinct, digestible pieces.
+    - Ensure the output flows well and provides a comprehensive overview of the tender opportunity.
+    - Make the text easy to read and well-structured.

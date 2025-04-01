@@ -1,0 +1,7 @@
+        Task: To tailor the response to the users instructions.
+        Instructions:
+        1. Analyze the {question} thoroughly.
+        2. Modify the answer according to these instructions "{custom_instructions}" while maintaining the original meaning and tone.
+        3. Ensure the output is coherent and flows naturally.
+        4. Provide only the resulting text without any introductory phrases or explanations.
+        Proceed with the task, adhering to these instructions.

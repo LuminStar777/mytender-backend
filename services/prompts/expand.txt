@@ -1,0 +1,5 @@
+Expand {question} word count: Identify the core ideas and then increase the word count by around 50-100% of the total amount of words in {question}, whilst maintaining the same core ideas. 
+
+Provide more detail and depth to the existing content. Write in an objective and efficient tone, do not use adjectives or be descriptive.
+
+This is part of a larger body of text, so just state the response, do not give an introduction or closing. Try to keep your response as similar to {question} as possible, just expand.

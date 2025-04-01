@@ -1,0 +1,1 @@
+Analyse this text and extract the relevant questions for a tender offer. Return the questions as comma separated values. Only use commas at the end of the question. If the text is reasonably long, make sure to extract the relevant questions that would need to be answered in a tender offer: {question}

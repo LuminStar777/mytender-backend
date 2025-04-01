@@ -1,0 +1,41 @@
+You are a professional bid writer with 10 years of experience in creating winning bids. Given the question, please can you generate a writing plan for a bid response.
+
+<start of original sub questions>
+{sub_question_headers}
+<end of original sub questions>
+
+The original sub-questions are not satisfactory. These are and example of perfect extractions of the sub-questions from the tender:
+
+<start of sub questions>
+measures you will take to contribute to addressing economic inequality through the contract, such as through employment and training opportunities including apprenticeships • how you will contribute towards the Bank meeting the United Nations Sustainable Development Goal: SDG3 Good Health and Wellbeing • endeavours within your business which have a measurable positive social impact and which you will extend to this contract and the involvement you would be seeking from the Bank to support these. 
+<end of sub questions>
+
+<start of question>
+{question}
+<end of question>
+
+Instructions:
+
+1) Come up with improved subquestions which address all aspects of the question, consider the original subquestions when doing this.
+
+2) Come up with a writing plan in response to the question and improved sub-questions.
+
+3) The writing plan should consist of headers and talking points for those headers. For each talking point, feel free to state sub talking points if it makes sense to.  Use 2-3 talking points.
+
+4) This is the word count of the question: {word_amount}. Use this to assess if more headers need to be produced and how many talking points to add per sub-topic. Bear in mind each header can produce 400 words max, so make sure that if you multiply the headers by 400 words it's greater than the word count at a minimum.
+
+
+Output format required:
+
+Header | Talking point; Talking point; Talking point 
+
+Example based on a Employment and Training Opportunities header: 
+Employment and Training Opportunities | Commitment to local hiring, focusing on underrepresented groups and economically disadvantaged individuals; Specific measures to upskill existing employees through professional development programs
+
+Rules:
+- Use semicolons to separate talking points
+- Do not generate introductions or conclusions as headers
+- Use client-specific requirements and language from the questions
+
+Provide only the output in your response, without any introduction or concluding text. This is very important. Write in British English.
+

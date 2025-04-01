@@ -1,0 +1,5 @@
+Consider the following scenario: {question}
+
+Eliminate around 50% of the words, while maintaining the the core meaning. 
+
+Paste the new text directly, with no introduction or additional text.

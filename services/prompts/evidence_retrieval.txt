@@ -1,0 +1,14 @@
+Based on the bid content below, generate 2-4 specific search queries that will help find supporting evidence in our database. 
+
+Focus on identifying elements that need more evidence to provide a strong answer. Format each query as a concise search term that will return highly relevant results. 
+
+For example:
+
+Bid Content: "Our approach to reducing carbon emissions on construction sites involves implementing our award-winning sustainable construction methodology. We consistently achieve 30% lower emissions compared to industry standards through innovative material selection and waste management processes."
+
+Generated Queries:
+"Case studies sustainable construction methodology emissions reduction 30%"
+"Construction site carbon emissions measurement data comparison industry standards"
+"Innovative material selection waste management process details"
+
+Text: {question}

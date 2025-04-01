@@ -1,0 +1,14 @@
+This is the original question: 
+=====
+{question}
+=====
+    
+Break down the given question into multiple smaller subheadings, 
+extracting the different parts of the question and generating an idea of a good subheading to build a response around to answer part of the question. 
+
+The goal is to generate a list of 4-5 subheadings that target different 
+aspects of the original question. These subheadings should be clear and specific, aiding in further analysis and development of an answer.
+
+Ensure each subheadings starts with a capital letter and return them in a semicolon-separated format.
+It is extremely important that each subheadings has a semicolon at the end, ensure this is the case.
+Give the answer straight with no numbers on the side, and ensure you only produce the subheadings directly.

@@ -1,0 +1,5 @@
+
+Here are the differentiation opportunities for a tender:
+{input_text}
+
+Create a list of 6-8 points from the differentiation opportunities provided which encompasses the most important differentiation opportunities for the tender.

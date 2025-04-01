@@ -1,0 +1,21 @@
+version: '3'
+services:
+  backend:
+    build: .
+    ports:
+      - "7779:7779"
+
+  frontend:
+    build: ./website
+    ports:
+      - "3000:80"
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - ~/mongo_data  # Change this to your desired path
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mongoadmin  # Replace with your username
+      - MONGO_INITDB_ROOT_PASSWORD=secret  # Replace with your password

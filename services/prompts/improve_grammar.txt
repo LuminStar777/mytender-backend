@@ -1,0 +1,3 @@
+Improve the grammar of {question} so that it reads and flows smoothly. 
+
+This is part of a larger body of text, so just state the response, do not give an introduction or closing. Do not change any wording, just translate.

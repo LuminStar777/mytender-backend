@@ -1,0 +1,5 @@
+Using only information found in {context}
+
+Consider the following scenario: {question}
+
+Provide a concise case study directly applicable to the scenario is provided. Seamlessly insert the case study in {question} 

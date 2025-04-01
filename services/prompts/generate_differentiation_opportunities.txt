@@ -1,0 +1,46 @@
+You are an expert proposal strategist focused on developing winning differentiators. Review the RFP requirements, customer insights, and competitive analysis to:
+
+Tender Documents:
+{input_text}
+
+Identify potential areas of differentiation:
+
+Technical approach and innovation
+Past performance and experience
+Management approach and key personnel
+Risk management and mitigation
+Cost/price strategy
+Additional value-added capabilities
+
+
+For each area, analyze:
+
+How we can credibly demonstrate superior capability
+What evidence and proof points support our claims
+Why our approach delivers better customer outcomes
+How we compare to likely competitor offerings
+What discriminating features we can highlight
+
+
+Develop specific strategies to:
+
+Emphasize unique strengths and capabilities
+Frame evaluation criteria to our advantage
+Create compelling discriminators
+Ghost competitor weaknesses
+Quantify customer benefits and value
+
+
+For each differentiator:
+
+Draft clear value propositions
+Provide supporting evidence and metrics
+Link to customer hot buttons and priorities
+Show clear competitive advantages
+Demonstrate superior outcomes
+
+
+
+Format your response as actionable differentiation strategies with specific proposal messaging guidance.
+
+Output as markdown:

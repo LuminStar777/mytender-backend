@@ -1,0 +1,153 @@
+[tool.poetry]
+name = "sparkai-chatbot"
+version = "0.1.0"
+description = ""
+authors = ["Nicolas Dickreuter <dickreuter@gmail.com>"]
+readme = "README.md"
+
+[tool.black]
+line-length = 100
+target-version = ['py313']
+skip-string-normalization = true
+
+[tool.poetry.dependencies]
+python = "3.13"
+fastapi = "^0.104.0"
+gunicorn = "^21.2.0"
+ipython = "^8.16.1"
+matplotlib = "^3.8.0"
+motor = "3.4.0"
+pandas = "^2.2.0"
+xlrd = "^2.0.1"
+openpyxl = "^3.1.2"
+poetry = "^1.7.1"
+pyjwt = "^1.7.1"
+pymongo = "4.8.0"
+pypdf2 = "^3.0.1"
+pypika = "^0.48.9"
+pytest = "^7.4.3"
+pyyaml = "^6.0.1"
+requests = "^2.31.0"
+sqlalchemy = "^2.0.22"
+tqdm = "^4.66.1"
+urllib3 = "2.0.7"
+uvicorn = "^0.23.2"
+python-docx = "^1.1.0"
+pytest-asyncio = "^0.23.5"
+slack-sdk = "^3.27.1"
+tiktoken = "^0.7.0"
+openai = "^1.30.5"
+python-jose = "^3.3.0"
+pylint = "^3.2.3"
+stripe = "^10.4.0"
+boto3 = "^1.34.147"
+pydantic = {extras = ["email"], version = "^2.8.2"}
+langgraph = "^0.2.12"
+nltk = "^3.8.1"
+chromadb = "^0.5.3"
+langchain-chroma = "^0.1.3"
+docx = "^0.2.4"
+mammoth = "^1.8.0"
+transformers = "^4.44.2"
+llama-parse = "^0.5.2"
+jinja2 = "^3.1.4"
+pillow = "^11.0.0"
+python-multipart = "^0.0.12"
+mermaid-py = "^0.6.0"
+svglib = "^1.5.1"
+reportlab = "^4.2.5"
+semantic-text-splitter = "^0.18.1"
+langchain-community = "^0.3.8"
+langchain-google-genai = "^2.0.6"
+langchain-openai = "^0.2.10"
+langchain-anthropic = "^0.3.0"
+langchain-ollama = "^0.2.0"
+python-json-logger = "^3.2.0"
+langchain-groq = "^0.2.1"
+langchain-aws = "^0.2.10"
+markitdown = "^0.0.1a3"
+pymupdf = "^1.25.3"
+pymupdf4llm = "^0.0.17"
+
+
+[tool.pdm.build]
+includes = []
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[project]
+authors = [
+    {name = "Nicolas Dickreuter", email = "dickreuter@gmail.com"},
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi<1.0.0,>=0.104.0",
+    "gunicorn<22.0.0,>=21.2.0",
+    "ipython<9.0.0,>=8.16.1",
+    "matplotlib<4.0.0,>=3.8.0",
+    "motor==3.4.0",
+    "pandas<3.0.0,>=2.2.0",
+    "xlrd<3.0.0,>=2.0.1",
+    "openpyxl<4.0.0,>=3.1.2",
+    "poetry<2.0.0,>=1.7.1",
+    "pyjwt<2.0.0,>=1.7.1",
+    "pymongo==4.8.0",
+    "pypdf2<4.0.0,>=3.0.1",
+    "pypika<1.0.0,>=0.48.9",
+    "pytest<8.0.0,>=7.4.3",
+    "pyyaml<7.0.0,>=6.0.1",
+    "requests<3.0.0,>=2.31.0",
+    "sqlalchemy<3.0.0,>=2.0.22",
+    "tqdm<5.0.0,>=4.66.1",
+    "urllib3==2.0.7",
+    "uvicorn<1.0.0,>=0.23.2",
+    "python-docx<2.0.0,>=1.1.0",
+    "pytest-asyncio<1.0.0,>=0.23.5",
+    "slack-sdk<4.0.0,>=3.27.1",
+    "tiktoken<1.0.0,>=0.7.0",
+    "openai<2.0.0,>=1.30.5",
+    "python-jose<4.0.0,>=3.3.0",
+    "pylint<4.0.0,>=3.2.3",
+    "stripe<11.0.0,>=10.4.0",
+    "boto3<2.0.0,>=1.34.147",
+    "pydantic[email]<3.0.0,>=2.8.2",
+    "langgraph<1.0.0,>=0.2.12",
+    "nltk<4.0.0,>=3.8.1",
+    "chromadb<1.0.0,>=0.5.3",
+    "langchain-chroma<1.0.0,>=0.1.3",
+    "docx<1.0.0,>=0.2.4",
+    "mammoth<2.0.0,>=1.8.0",
+    "transformers<5.0.0,>=4.44.2",
+    "llama-parse<1.0.0,>=0.5.2",
+    "jinja2<4.0.0,>=3.1.4",
+    "pillow<12.0.0,>=11.0.0",
+    "python-multipart<1.0.0,>=0.0.12",
+    "mermaid-py<1.0.0,>=0.6.0",
+    "svglib<2.0.0,>=1.5.1",
+    "reportlab<5.0.0,>=4.2.5",
+    "semantic-text-splitter<1.0.0,>=0.18.1",
+    "langchain-community<1.0.0,>=0.3.8",
+    "langchain-google-genai<3.0.0,>=2.0.6",
+    "langchain-openai<1.0.0,>=0.2.10",
+    "langchain-anthropic<1.0.0,>=0.3.0",
+    "langchain-ollama>=0.2.0,<1.0.0",
+    "python-json-logger<4.0.0,>=3.2.0",
+    "langchain-groq<1.0.0,>=0.2.1",
+    "langchain-aws<1.0.0,>=0.2.10",
+    "markitdown<1.0.0,>=0.0.1a3",
+    "pymupdf<2.0.0,>=1.25.3",
+    "pymupdf4llm<1.0.0,>=0.0.17",
+    "olefile>=0.47",
+    "autoflake>=2.3.1",
+    "graphviz>=0.20.3",
+    "sphinx>=8.2.3",
+    "sphinx-rtd-theme>=3.0.2",
+    "sphinx-autoapi>=3.6.0",
+    "langchain-deepseek>=0.1.3",
+]
+name = "sparkai-chatbot"
+version = "0.1.0"
+description = ""
+readme = "README.md"

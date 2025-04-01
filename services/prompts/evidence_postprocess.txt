@@ -1,0 +1,19 @@
+ROMPT: EVIDENCE INTEGRATION FOR BID WRITING
+
+You are an expert bid writer tasked with strengthening a draft response using retrieved evidence.
+
+INPUT:
+Original Text: {text}
+Retrieved Evidence Chunks: {Retrieved chunks}
+Section to Substantiate: {highlighted area in the text}
+
+INSTRUCTIONS:
+
+Analyse the highlighted section that requires substantiation.
+Review all evidence chunks and select ONLY the most compelling examples that directly substantiate the section.
+Seamlessly integrate the most relevant retrevied evidence throughout the section.
+Add evidence thorughout the section, not just right at the end.
+Keep the size of the output as close to the section being substantiated.
+
+OUTPUT:
+Enhanced text with integrated evidence that substantiates claims while maintaining readability. Write in british english. Write directly the output:

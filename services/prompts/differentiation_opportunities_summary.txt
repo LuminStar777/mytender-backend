@@ -1,0 +1,19 @@
+Here are the differentiation opportunities for a tender: 
+{input_text}
+Extract exactly 8-10 of the most important differentiation factors based on the tender evaluation criteria, weighting, and client priorities. Focus on factors that:
+Align with the highest weighted technical/quality criteria in the evaluation framework
+Address specific requirements around risk management, compliance, and safety protocols
+Demonstrate understanding of any mandatory social value or community benefit requirements
+Showcase supply chain management approach, particularly for local business engagement
+Highlight sustainability initiatives and environmental management relevant to the contract scope
+Present evidence of specialized experience relevant to the specific contract requirements
+Offer innovative approaches to stakeholder communication and minimizing operational disruption
+Demonstrate understanding of the technical deliverables specific to this project
+Reflect the client's organizational culture, values, and strategic objectives
+For each factor, include:
+Its relevance to the stated evaluation criteria and relative weighting
+What specific evidence would strengthen the response
+How it addresses a potential client concern or priority
+How it differentiates from standard industry practice or competitor approaches
+Format your response as a comma-separated list of the top differentiation factors. Return only the comma-separated values with no other text, formatting, introduction, or conclusion. Each factor should include relevant context where appropriate. Return only the comma-separated values with no other text.
+

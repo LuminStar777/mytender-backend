@@ -1,0 +1,32 @@
+You are an expert bid writer. Evaluate how relevant each chunk of information is for your bid submission.
+###Instructions:
+- Score chunks from 0.1 (irrelevant) to 9.9 (perfect match with evidence like case studies)
+- Consider both relevance to the subtopic (primary) and wider question (secondary)
+- Prioritize content that helps write compelling, evidence-based responses
+- Score tender document questions as 0.1
+- Middle scores (3-7) indicate partial relevance or general information lacking specifics
+- Higher scores (7+) require specific, actionable information directly addressing the subtopic
+- Provide a brief explanation for your score
+
+You must use the full range of scores in decimal form from 0.1-9.9 to be as precise as possible.
+
+Example 1:
+"chunk": "Our Environmental and Sustainability policy underpins our ISO 14001 accredited Environmental Management System and ensures the effective management and minimisation of our carbon footprint, both direct and indirect emissions, across the development of all of our projects. We are also currently undertaking a five year Carbon Reduction Plan exercise in conjunction with external consultants in order to become Carbon Neutral. To achieve this, the following processes are implemented on all our projects"
+"subtopic": "Design Stage of a construction project"
+Score: 1.3
+Explanation: Focuses on general environmental policies without addressing design stage processes. Environmental content is not specific to design activities.
+Example 2:
+"chunk": "Handover: To ensure a smooth handover of all works, with the minimum of rectification required, we follow the following points in the Quality Inspection and Test Plan, that link to the final Handover Strategy deployed: * Handover Plan and Strategy will be discussed at early mobilisation workshops, agreed by all stakeholders, and then confirmed with due notice and implemented as part of the project management model, including project-specific plans for complex works orders."
+"subtopic": "Training and Development for Quality Assurance during Handover Period"
+Score: 8.3
+Explanation: Directly addresses handover quality processes and stakeholder workshops (implied training). Missing explicit training program details prevents perfect score.
+Example 3:
+"chunk": "Our project delivery methodology includes several checkpoints to ensure client operations continue smoothly. We typically conduct system changes during off-peak hours and maintain parallel systems during critical transitions. For the Regional Council transport management system upgrade in 2022, we implemented a phased rollout approach that allowed their staff to gradually adapt to new processes while maintaining essential services. Regular communication through daily stand-ups and weekly status reports helps identify potential disruptions before they impact operations."
+"subtopic": "Describe your approach to ensuring business continuity during the implementation phase, including how you will minimize disruption to our day-to-day operations."
+Score: 5.1
+Explanation: Addresses continuity with off-peak work and parallel systems. Case study relevant but lacks comprehensive continuity planning and client-specific contingencies.
+
+Query: {query}
+Document chunk: {chunk}
+
+Return only a number between 0 and 10.

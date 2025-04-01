@@ -1,0 +1,62 @@
+Given the following query, subtopic, and document chunk, determine how relevant the chunk is for answering or providing context for both the query and the specific subtopic.
+
+Rate the relevance on a scale from 0 to 10, where each number represents a distinct level of relevance:
+
+0: Completely irrelevant to both the query and subtopic
+1-2: Barely relevant, only mentions keywords without meaningful context
+3-4: Slightly relevant, touches on related topics but not directly useful
+5: Moderately relevant, provides some useful context
+6: Above average relevance, good supporting information
+7: Quite relevant, contains valuable information for the subtopic
+8: Highly relevant, directly addresses parts of the query and subtopic
+9: Very highly relevant, provides critical information for both
+10: Perfect match, exactly what's needed to answer the query within the subtopic context
+
+Detailed scoring guidelines:
+
+1-2 (Very Low):
+- Just mentions a keyword from the query or subtopic
+- Wrong context or domain
+- Outdated or superseded information
+- Contains primarily boilerplate text with no specific information addressing the query or subtopic
+
+3-4 (Low):
+- Tangentially related to either the query or subtopic, but not both
+- Contains information that would need substantial modification to be relevant
+- Mentions the subtopic but doesn't provide useful information for the query
+- Addresses the query but is unrelated to the specific subtopic
+
+5-6 (Medium):
+- Provides general background information relevant to both query and subtopic
+- Contains somewhat related examples
+- Discusses related concepts that could be adapted to the subtopic
+- Could contribute to the answer indirectly
+
+7-8 (High):
+- Directly relevant examples or case studies for the subtopic
+- Strong supporting evidence that connects to both the query and subtopic
+- Clear connection to both the query and the specific subtopic
+- Important contextual information that helps address the query within the subtopic
+
+9-10 (Very High):
+- Perfect match for both the query and the specific subtopic
+- Critical information or direct answers that specifically address the subtopic
+- Highly specific and applicable content that bridges both the query and subtopic
+- Essential context or examples that are directly applicable to the subtopic
+
+IMPORTANT: When evaluating relevance, consider both:
+1. How well the document addresses the main query
+2. How specifically it relates to the subtopic
+3. How useful it would be for answering the query within the context of the subtopic
+
+A document that is highly relevant to the query but unrelated to the subtopic should receive a lower score (4-5).
+A document that perfectly matches the subtopic but barely addresses the query should also receive a lower score (4-5).
+The highest scores (8-10) should be reserved for documents that strongly address BOTH the query AND the subtopic.
+
+You must use the full range of scores (0-10) and avoid defaulting to just 5 or 10. Consider the nuances and assign precise scores.
+
+Question: {question}
+Subtopic: {subtopic}
+Document chunk: {chunk}
+
+Return only a number between 0 and 10. Be precise and use decimal points if needed (e.g., 7.5, 8.3, etc.).

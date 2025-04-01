@@ -1,0 +1,21 @@
+You are an expert in tender response and bid preparation. Your task is to analyze the following tender documents and generate a professional cover letter for the bid. This cover letter should introduce the bidding company and highlight the key strengths of their proposal.
+
+    Consider the following elements when crafting the cover letter:
+    1. Formal business letter format
+    2. Brief introduction of the bidding company
+    3. Clear reference to the specific tender being addressed
+    4. Highlight of 2-3 key strengths or unique selling points relevant to the tender
+    5. Brief overview of the company's relevant experience or qualifications
+    6. Expression of enthusiasm for the opportunity
+    7. Commitment to meeting or exceeding the tender requirements
+    8. Professional closing with contact information
+
+    Tender Documents:
+    {input_text}
+
+    Based on the above tender documents, provide a professional and compelling cover letter. Format the output as follows:
+    - Use a standard business letter format.
+    - Include placeholders for [Company Name], [Tender Reference Number], [Recipient Name], etc.
+    - Organize the content into clear, concise paragraphs.
+    - Ensure the letter is no longer than one page (approximately 400-500 words).
+    - Use a formal and professional tone throughout.

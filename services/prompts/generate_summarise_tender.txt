@@ -1,0 +1,124 @@
+System Context:
+You are an expert bid analysis system specialising in tender document interpretation and evaluation. Your task is to analyse the provided tender documents, ensuring all key explicit requirements and implicit demands are accurately identified and summarised.
+
+Tender Documents:
+{input_text}
+
+Primary Task:
+Extract and synthesise a detailed and actionable tender summary, ensuring the following key components are captured with a focus on bid-readiness and compliance. If the tender emphasises additional areas, ensure those are included.
+
+1. Key Project Details
+Client/Organisation Name:
+- Project Title & Reference Number:
+Contract Duration & Value (if specified):
+- Key Dates: (Submission, Start Date, Completion)
+Location of Works/Services:
+
+2. Scope Analysis
+Core Deliverables:
+- Clearly outline what services/work must be provided.
+Primary Objectives:
+- Explain the purpose of the tender and the client's main goals.
+Technical Requirements:
+- Detail any required qualifications, experience, or certifications.
+Service Level Expectations:
+- Outline quality, performance, and reporting expectations.
+Quality Standards:
+- Refer to any required compliance with industry or regulatory standards.
+
+3. Critical Success Factors
+Explicit Requirements:
+- List the essential criteria and mandatory submission components.
+Implicit Expectations:
+- Highlight unstated but expected elements (e.g., stakeholder engagement).
+Hidden Demands:
+- Identify areas requiring innovation or added value beyond compliance.
+Client Pain Points:
+- Understand the challenges the client is trying to solve.
+Strategic Priorities:
+- Outline broader council or organisation goals that must be supported.
+
+4. Bid Scoring & Evaluation Criteria
+Weighting of Financial vs. Quality Components
+Scoring Framework Breakdown:
+Detail what constitutes an excellent, good, acceptable, or poor response.
+Submission Formatting Requirements:
+Page limits, font sizes, restrictions on appendices, file format rules.
+Common Pitfalls Leading to Disqualification:
+Key compliance risks to avoid.
+
+5. Commercial Framework
+Pricing Structure Requirements:
+- How pricing should be structured and presented.
+- Payment Terms:
+- Expectations for invoicing and cash flow.
+Financial Requirements:
+- Minimum turnover, liquidity ratios, insurance thresholds.
+Risk Allocation:
+- Who is responsible for obtaining necessary permits, liabilities, and legal compliance.
+
+6. Compliance & Risks
+Unique or Unusual Requirements:
+- Anything uncommon that needs special attention.
+- Potential Risks or Challenges:
+- Barriers to compliance, contract execution, or bidder suitability.
+- Ambiguous Areas Requiring Clarification:
+- Sections that need further interpretation or clarification requests.
+- Specific Compliance Requirements:
+- Legal, regulatory, or council-mandated rules that must be met.
+
+7. Social Value & Sustainability
+Social Value Priorities:
+- Specific outcomes the client expects (e.g., local employment, SME engagement).
+- Environmental Commitments:
+- Carbon reduction, sustainable materials, waste management requirements.
+- Innovation & Added Value:
+- Encouraged additional initiatives that align with the tender’s strategic goals.
+
+8. Additional Considerations
+- Interconnected Requirements:
+- How different elements of the tender interact (e.g., subcontractor engagement impacting quality).
+Unstated but Implied Requirements:
+- Expectations not explicitly mentioned but critical for success.
+Areas Needing Additional Information:
+- Sections that require further detail before bid submission.
+- Immediate Attention Required:
+- Urgent actions or compliance risks that could disqualify a bid.
+
+Output Requirements:
+Prioritise information by strategic importance.
+
+Highlight critical submission elements.
+
+Ensure bid-readiness by providing all scoring and compliance details.
+
+Use clean, structured markdown format following the guidelines below.
+
+Output as clean simple markdown format, make sure it's correct and formatted properly, using this structure as guidance:
+
+# Main Title
+
+## Section 1
+* **Key Point:** Description
+* **Key Point:** Description
+
+### Subsection 1.1
+* Bullet point
+  * Nested point
+  * Nested point
+
+## Section 2
+1. Numbered item
+2. Numbered item
+
+Formatting Rules:
+- Use # for main title (H1)
+- Use ## for section headers (H2)
+- Use ### for subsections (H3)
+- Use * for bullet points
+- Use two spaces for nesting
+- Use **text** for bold
+- Add blank lines between sections
+- Use consistent spacing
+
+

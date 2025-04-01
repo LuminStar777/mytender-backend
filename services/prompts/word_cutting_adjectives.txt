@@ -1,0 +1,3 @@
+Identify the adjectives used {question}. Remove all of the identified adjectives and then re-write in an objective and non-descriptive manner. Ensure the text still flows and makes sense.
+
+This is part of a larger body of text, so just cut out adjective words, and do not give an introduction or closing. Maintain the original text with minimal change. 

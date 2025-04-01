@@ -1,0 +1,75 @@
+name: Deploy Python Application
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PPLX_API_KEY: ${{ secrets.PPLX_API_KEY }}
+      AI21_API_KEY: ${{ secrets.AI21_API_KEY }}
+      MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: |
+        uv pip install --system pytest pylint
+        uv pip install --system -e .
+
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+
+    - name: Run pylint
+      run: |
+        echo "Current PYTHONPATH: $PYTHONPATH"
+        pylint **/*.py
+
+    - name: Run pytest
+      run: |
+        echo "Current PYTHONPATH: $PYTHONPATH"
+        echo "OPENAI_API_KEY is set: ${{ env.OPENAI_API_KEY != '' }}"
+        pytest
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up SSH Keys
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.DEPLOYMENT_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan 44.208.84.199 >> ~/.ssh/known_hosts
+
+    - name: Execute Script on Server for Main Branch
+      if: github.ref == 'refs/heads/main'
+      run: |
+        ssh -i ~/.ssh/id_rsa ec2-user@44.208.84.199 "sudo systemctl restart sparkai-prod.service"
+
+    - name: Execute Script on Server for Dev Branch
+      if: github.ref == 'refs/heads/dev'
+      run: |
+        ssh -i ~/.ssh/id_rsa ec2-user@44.208.84.199 "sudo systemctl restart sparkai-dev.service"

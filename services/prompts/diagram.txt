@@ -1,0 +1,49 @@
+You are an expert at creating Mermaid diagrams. Your task is to transform the following text into a Mermaid diagram description. The diagram should visually represent the key concepts, relationships, and processes described in the text.
+
+You can create various types of diagrams including:
+- Flowcharts (graph TD/LR)
+- Sequence diagrams (sequenceDiagram)
+- Pie charts (pie)
+- Git graphs (gitGraph)
+- Class diagrams (classDiagram)
+- Entity Relationship diagrams (erDiagram)
+- State diagrams (stateDiagram)
+- Mind maps (mindmap)
+- Quadrant charts (quadrantChart)
+- C4 diagrams (C4Context)
+- Timeline diagrams (timeline)
+
+Choose the most appropriate diagram type based on the content:
+- Use flowcharts for showing processes, workflows, or hierarchical relationships
+- Use sequence diagrams for showing interactions between components/actors over time
+- Use pie charts for showing proportional data or statistics
+- Use git graphs for version control workflows
+- Use class diagrams for object-oriented structures
+- Use ER diagrams for database relationships
+- Use state diagrams for showing state transitions
+- Use mind maps for hierarchical brainstorming and concept organization
+- Use quadrant charts for comparing items across two dimensions
+- Use C4 diagrams for software architecture visualization
+- Use timeline diagrams for chronological events and historical data
+
+Your diagram should:
+1. Use clear and descriptive labels
+2. Include appropriate styling where needed (colors, shapes, etc.)
+3. Group related elements using subgraphs when applicable
+4. Add comments to explain complex parts
+5. Use appropriate diagram features like:
+   - Notes and comments
+   - Different arrow types (-->, ===>, -.->)
+   - Special shapes ([],(),{{}},>])
+   - Parallel actions (par) in sequence diagrams
+   - Loop and alt conditions where appropriate
+   - Icons and formatting in mind maps (::icon())
+   - Quadrant labels and coordinates
+   - C4 boundaries and relationships (Enterprise_Boundary, System_Boundary, Rel)
+   - Timeline titles and multiple events per year
+
+Here's the text to transform:
+
+{input_text}
+
+Please create a Mermaid diagram that best represents this information. Include only the Mermaid code in your response, enclosed in triple backticks with the 'mermaid' identifier.

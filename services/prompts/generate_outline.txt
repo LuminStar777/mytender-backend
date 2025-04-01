@@ -1,0 +1,74 @@
+Objective: Extract all questions / requirements (excluding those in any PQQ sections) from the provided tender document and organize them into a structured outline. The outline should only include questions requiring a substantive response that detail methodology, approach, or processes.
+
+You must follow this output Format in string:
+[Section Number] | [Section Heading] | [Question Text] | [Subsections] | [Word Count]
+
+IMPORTANT FORMAT RULES:
+1. Question field must ONLY contain the main question. If the question ends with "including:" or "such as:" or lists requirements with semicolons, put those requirements in the subsections field
+2. ALL bullet points, numbered lists, or semicolon-separated requirements must go in the Subsections field (4th field)
+3. Separate multiple subsections with semicolons
+
+EXAMPLES OF CORRECT FORMATTING:
+
+BAD FORMAT (Don't do this):
+9 | Technical Requirements | How will identity management be handled for:; Customer onboarding; Staff access; System integration | | 750
+
+GOOD FORMAT (Do this):
+9 | Technical Requirements | How will identity management be handled for: | Customer onboarding; Staff access; System integration | 750
+
+MORE EXAMPLES:
+1.1 | Quality Management | Describe your approach to quality management | Daily inspections; Staff training; Monitoring systems; Issue resolution | 500
+
+2.1 | System Integration | How will you integrate with existing systems | API development; Data migration; Testing procedures; Rollback processes | 1000
+
+3.1 | Customer Onboarding | Detail your customer onboarding process | Digital verification; Document processing; Account creation; Welcome communications | 750
+
+Instructions:
+
+###Identify Tender Response Questions by looking for:###
+Requests for detailed methodologies or approaches
+Questions starting with "Demonstrate how", "Detail your approach", "Describe your methodology"
+Questions requiring multiple elements in the response
+Questions with word/page count limits
+Questions with bullet-pointed requirements
+Questions asking about future delivery rather than past experience
+
+###Rules###
+
+ENSURE EACH SECTION HEADING IS UNIQUE AND USE THE EXACT HEADING FROM THE DOCUMENT
+Only include sections and requirements explicitly stated in the document
+Use the exact numbers that are in the Tender
+Extract all methodological requirements and subsections
+Maintain exact requirement text from the document
+Convert bullet points to semicolon-separated subsections
+
+###Subsections###
+
+Extract all subsections.
+Subsections are subquestions that the main question is specifically asking for.
+When looking for sub-sections, look for bullet points underneath the main question or question parts e.g a), b), c)
+
+###Wordcount Rules###:
+Use word count found in question
+Pages convert to words (1 page = 500 words)
+If no length specified, use 250 words per subsection
+Just give the word straight
+
+Example format of QUALITY questions to include:
+1.1 | Quality Management | Your response must detail your comprehensive approach to quality management. Include details of: | How you will ensure consistent quality across all service areas; How you will you allocate resources, assign tasks and monitor progress | 500
+1.2 | Quality Control Processes | Detail your established quality control processes, including: | Your comprehensive quality monitoring system including daily inspections, periodic audits, customer feedback mechanisms, and automated monitoring tools; Root cause analysis methodology including investigation procedures, stakeholder engagement processes, and documentation requirements; Your framework for categorising and prioritising quality issues based on impact assessment, urgency criteria, and resource implications | 2000
+2 | Staff Training Program | Provide a detailed explanation of: | Your staff training and development program; including initial onboarding procedures; ongoing skill development initiatives, and how you ensure all staff maintain required certifications and competencies | 1500
+
+If there are no subsections, leave this section blank for example:
+2 | Staff Training Program | Provide a detailed explanation of: | | 1500
+
+Examples of PQQ questions to EXCLUDE:
+
+Company name and registration details
+SME status questions
+Basic compliance confirmations
+Financial information requests
+
+This structured output is extremely important for the bid response. Only generate the outline, nothing else. Respond in British English.
+Tender Documents:
+{input_text}

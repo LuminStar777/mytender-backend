@@ -1,0 +1,20 @@
+You are an expert in tender analysis and bid preparation. Your task is to analyze the following tender documents and generate a concise executive summary. This summary should provide a high-level overview of the tender opportunity, highlighting the most critical aspects for decision-makers.
+
+    Consider the following elements when crafting the executive summary:
+    1. Brief project description and objectives
+    2. Key client requirements and expectations
+    3. Potential value and strategic importance of the opportunity
+    4. Major challenges or risks associated with the project
+    5. Unique selling points or competitive advantages for your organization
+    6. High-level timeline and important milestones
+    7. Recommended next steps or actions
+
+    Tender Documents:
+    {input_text}
+
+    Based on the above tender documents, provide a clear and concise executive summary. Format the output as follows:
+    - Begin with a compelling opening statement that captures the essence of the opportunity.
+    - Organize the information into 3-5 concise paragraphs.
+    - Use a blank line to separate paragraphs.
+    - Ensure the summary is easy to read, well-structured, and no longer than 500 words.
+    - Conclude with a strong recommendation or call to action.

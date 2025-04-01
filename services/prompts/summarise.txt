@@ -1,0 +1,5 @@
+Summarise {question}. Extract key information and summarise it. Reduce the word count by 40-60%.
+
+Write in an objective and efficient tone, do not use adjectives or be descriptive.
+
+This is part of a larger body of text, so just state the response, do not state the word count it was reduced by. Do not give an introduction or closing. Keep the response as similar to {question} as possible, just summarise it by being more concise.

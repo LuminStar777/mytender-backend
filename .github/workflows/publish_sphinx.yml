@@ -1,0 +1,66 @@
+name: Build and Deploy Sphinx Documentation
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/publish_sphinx.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
+
+      - name: Build documentation
+        run: |
+          # Make the build script executable
+          chmod +x docs/build_docs.sh
+          
+          # Modify the build script to not create a venv in CI
+          sed -i 's/python -m venv venv/echo "Skipping venv creation in CI"/' docs/build_docs.sh
+          sed -i 's/source venv\/bin\/activate/echo "Skipping venv activation in CI"/' docs/build_docs.sh
+          sed -i 's/deactivate/echo "Skipping deactivation in CI"/' docs/build_docs.sh
+          
+          # Run the build script
+          ./docs/build_docs.sh
+
+      - name: Set Target Directory
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/dev" ]; then
+            echo "TARGET_DIR=/home/ec2-user/sphinx_doc_html" >> $GITHUB_ENV
+          else
+            echo "TARGET_DIR=/home/ec2-user/sphinx_doc_html" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy Documentation to Server
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOYMENT_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan 44.208.84.199 >> ~/.ssh/known_hosts
+          
+          # Create directory if it doesn't exist
+          ssh -i ~/.ssh/id_rsa ec2-user@44.208.84.199 "mkdir -p ${{ env.TARGET_DIR }}"
+          
+          # Clean the target directory before deployment
+          echo "Cleaning the target directory to remove old files..."
+          ssh -i ~/.ssh/id_rsa ec2-user@44.208.84.199 "rm -rf ${{ env.TARGET_DIR }}/*"
+          
+          # Copy the built documentation
+          echo "Copying new documentation files..."
+          scp -i ~/.ssh/id_rsa -r ./docs/build/html/* ec2-user@44.208.84.199:${{ env.TARGET_DIR }}
+          
+          echo "Sphinx documentation deployed to ${{ env.TARGET_DIR }}"
+          echo "Nginx configuration will be handled manually as requested."

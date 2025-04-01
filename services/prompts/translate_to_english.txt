@@ -1,0 +1,5 @@
+Translate {question} to en-GB.
+
+This is part of a larger body of text, so just state the response, do not give an introduction or closing. 
+
+This is part of a larger body of text, so just state the response, do not give an introduction or closing. Do not change any wording, just translate.

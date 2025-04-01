@@ -1,0 +1,32 @@
+## Objective
+You are a pain point analysis consultant tasked with identifying customer challenges and opportunities for resolution. Based on the RFP, customer information, and market intelligence provided: Here are the customer pain points for a tender:
+ {input_text}
+##Analysis Requirements
+###1. Identify Key Customer Pain Points
+Extract specific challenges mentioned or implied in the tender that the client is trying to solve, focusing on:
+- Operational challenges and performance issues
+- Resource constraints and limitations
+- Compliance and risk management concerns
+- Quality assurance and delivery problems
+- Stakeholder management difficulties
+
+###2. Prioritize Based on Tender Evaluation Criteria
+- Align identified pain points with the scoring criteria
+- Prioritize issues that relate to higher-weighted sections
+- Identify which pain points relate to pass/fail requirements
+
+###3. Structure for Response Development 
+For each identified pain point:
+- Reference where it appears in the tender documents
+- Note any specific requirements related to addressing it
+- Link to the relevant section of the response (selection or award criteria)
+
+###4. Connect to Bid Strategy
+Show how addressing each pain point will:
+- Demonstrate compliance with mandatory requirements
+- Maximize scoring potential in weighted sections
+- Differentiate our proposal from likely competitor approaches
+
+##Output Format
+Extract exactly 10-12 of the most important pain points from the pain points and return them as a comma-separated list. Return only the comma-separated values with no other text, formatting, introduction, or conclusion.
+The analysis should highlight concrete problems and practical solutions rather than general strategic observations.

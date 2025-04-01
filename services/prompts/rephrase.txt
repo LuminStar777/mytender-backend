@@ -1,0 +1,3 @@
+Rephrase {question}. Identify the theme of the text and rephrase a similar message, using {context} specifically. The objective is to ensure your output is empirical and from within the database, do not fantasise.
+
+This is part of a larger body of text, so just rephrase {question}, and do not give an introduction or closing or make any additions.

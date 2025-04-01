@@ -1,0 +1,15 @@
+Section name: {section_name}
+
+#### Assignment Protocol
+
+Based on the section name, output one of these values:
+
+
+3b_case_study    - For questions about past performance, track record, and examples
+3b_commercial    - For general business, strategy, and commercial questions
+3b_personnel     - For team structure, staffing, and workforce management
+3b_technical     - For technical processes, methodology, and operational questions
+3b               - For generic quesitons that don't fit into the other categories
+
+Response Format:
+Output only one of the above values without any explanation.

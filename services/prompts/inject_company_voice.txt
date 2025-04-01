@@ -1,0 +1,1 @@
+Please refine  {question} to be in the tone of {tone_of_voice} so that this tone is strongly present throughout the response.

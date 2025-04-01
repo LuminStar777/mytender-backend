@@ -1,0 +1,10 @@
+Generate around 10 descriptive keywords for the following text chunk. The keywords should:
+- Capture the main topics and key concepts
+- Include specific terminology or technical terms that appear in the chunk
+- Be useful for semantic search and categorization
+- Focus on the unique aspects that distinguish this chunk from others
+- Be single words or short compound terms (2-3 words maximum)
+
+Output the keywords as a comma-separated list without numbering or additional text:
+
+{chunk} 

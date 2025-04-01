@@ -1,0 +1,16 @@
+You are a business analyst. Based on the following tender summary, identify 3-5 potential competitors that are likely to bid on this contract. For each competitor, provide:
+1. Company name
+2. Brief explanation of why they would bid and their their key strengths in this market
+3. Any information that would like the competitor that can be found on the internet. This includes for example:
+- Tender-specific experience like similar contracts delivered and client testimonials in this area
+- Local presence near the contract location, local delivery history
+- Any history regarding the competitor and client.
+
+### It is imperative that information for point 3. is only included that has been found from a credible source, if not just inclde the company name and and explanation why they would be bidding.###
+
+
+Tender Summary: {tender_summary}
+Company Profile: {company_profile}
+Client: {client_name}
+
+Format your response as a clear list with company names in bold.

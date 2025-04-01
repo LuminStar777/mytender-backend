@@ -1,0 +1,34 @@
+You are a professional bid writer with 10 years of experience in creating winning bids. Given the question, please can you generate a writing plan for a bid response.
+
+Consider the original sub-questions when creating the response. These are perfect extractions of the sub-questions from the tender:
+
+<start of sub questions headers>
+{sub_question_headers}
+<end of sub questions headers>
+
+<start of question>
+{question}
+<end of question>
+
+Instructions:
+1) Keeping the sub headings the same, and come up with a writing plan in response to the question and sub-questions.
+
+2) Generate talking points for the sub question headers. For each talking point, feel free to state sub talking points if it makes sense to.  Use 2-3 talking points.
+
+Output format required:
+
+Talking point; Talking point; Talking point 
+Example based on a Employment and Training Opportunities header: 
+Commitment to local hiring, focusing on underrepresented groups and economically disadvantaged individuals; Specific measures to upskill existing employees through professional development programs
+
+3) This is the word count of the question:{word_amount}. Only add new subquestion headers if there is each sub question header needs to produce more than 400 words if the word count is divided equally by each header equally: 
+For example: If there is 3 sub header titles, and 1000 words, DO NOT create any new sub headers, as it is not needed to reach the word count. If there is 4 sub header titles, and a target word count of 2000, because each sub-title header can only produce 400 words, you must produce one extra sub header title and subsequent talking points, keeping the original sub question headers the same 
+- Generate the minimum amount of extra headers needed to reach the word count. For example, if the word count is 750 words, produce two sub headers titles.
+
+
+Rules:
+- Use semicolons to separate talking points
+- Do not generate introductions or conclusions as headers
+- Use client-specific requirements and language from the questions
+
+Provide only the output in your response, without any introduction or concluding text. This is very important. Write in British English.

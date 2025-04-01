@@ -1,0 +1,3 @@
+Voice Conversion: Transform {question} from passive to active voice, where 'We will'/ 'our' initiates actions.
+
+This is part of a larger body of text, so just convert the voice, and do not give an introduction or closing or make any additions.
