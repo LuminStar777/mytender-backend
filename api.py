@@ -22,8 +22,6 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.responses import StreamingResponse
@@ -83,6 +81,17 @@ from api_modules.user_endpoints import (
     process_send_organisation_email,
     process_set_user_task,
 )
+
+
+from fastapi.security import HTTPBasic
+from fastapi.security.http import HTTPAuthorizationCredentials
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPBasicCredentials
+from fastapi_jwt_auth import AuthJWT
+from jose import jwt, JWTError
+import httpx
+from typing import Union, Optional
 from config import (
     ALGORITHM,
     SECRET_KEY,
@@ -129,31 +138,10 @@ from utils import (
     is_user_type,
     makemd5,
     has_permission_to_access_bid,
-    get_parent_user
+    get_parent_user,
 )
-from okta_middleware import OktaJWTMiddleware
 
 log = logging.getLogger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        # Decoding the token using python-jose
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        return "default"
-    return email
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -201,95 +189,164 @@ class Settings(BaseModel):
 def get_config():
     return Settings()
 
+
+# Okta config
+OKTA_ISSUER = "https://dev-77225952.okta.com/oauth2/default"
+OKTA_AUDIENCE = "api://default"
+JWKS_URL = f"{OKTA_ISSUER}/v1/keys"
+
+# Security schemes
+existing_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+okta_auth_scheme = HTTPBearer()
 security = HTTPBasic()
 
-'''
-after proper setup of the okta account configuration
-we can run this middleware instead of any other url
-'''
-# # Add CORS middleware
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins="*",
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+class OktaTokenData(BaseModel):
+    client_id: str
+    scope: str
+    sub: str
 
-# # Add Okta JWT Middleware
-# app.add_middleware(OktaJWTMiddleware)
+class User(BaseModel):
+    email: str
+    password: str
 
+class Settings(BaseModel):
+    authjwt_secret_key: str = SECRET_KEY
 
-@app.post('/token')
-async def login(credentials: HTTPBasicCredentials = Depends(security), request: Request = None):
-    issuer = "https://dev-77225952.okta.com"  # Replace with config
-    token_url = f"{issuer}/oauth2/v1/token"
-    print(token_url)
+@AuthJWT.load_config
+def get_config():
+    return Settings()
 
+async def verify_okta_token(token: str) -> OktaTokenData:
+    """Verify Okta tokens"""
     try:
-        # First try without nonce
-
-        # Retry with nonce
-        response = httpx.post(
-            token_url,
-            headers={
-                # "DPoP": dpop_proof,
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            data={
-                "grant_type": "client_credentials",
-                "client_id": credentials.username,
-                "client_secret": credentials.password
-            }
+        async with httpx.AsyncClient() as client:
+            jwks = (await client.get(JWKS_URL)).json()
+        
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+        
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == kid:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"],
+                    "alg": key["alg"]
+                }
+                break
+        
+        if not rsa_key:
+            raise HTTPException(401, detail="No matching key found")
+        
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=["RS256"],
+            audience=OKTA_AUDIENCE,
+            issuer=OKTA_ISSUER
         )
-
-        if response.status_code == 200:
-            return response.json()
-        print(response.text)
-        raise HTTPException(response.status_code, detail=response.text)
-
+        
+        return OktaTokenData(
+            client_id=payload.get("cid") or payload.get("sub"),
+            scope=" ".join(payload.get("scp", [])) or payload.get("scope", ""),
+            sub=payload.get("sub")
+        )
     except Exception as e:
-        print(e)
-        raise HTTPException(500, detail=str(e))
+        raise HTTPException(401, detail=f"Invalid Okta token: {str(e)}")
 
-## review with nicolas
+async def get_current_user(
+    request: Request,
+    existing_token: Optional[str] = Depends(existing_auth_scheme),
+    okta_token: Optional[HTTPAuthorizationCredentials] = Depends(okta_auth_scheme),
+    Authorize: AuthJWT = Depends()
+) -> Union[str, OktaTokenData]:
+    """Dual authentication dependency"""
+    # Try Okta token first
+    if okta_token:
+        try:
+            return await verify_okta_token(okta_token.credentials)
+        except HTTPException:
+            pass
+    
+    # Fall back to existing token
+    if existing_token:
+        try:
+            Authorize.jwt_required()
+            return Authorize.get_jwt_subject()
+        except Exception:
+            pass
+    
+    raise HTTPException(401, detail="Invalid authentication credentials")
+
+# Modified login endpoint to support both flows
 @app.post("/login")
-async def login(user: User, Authorize: AuthJWT = Depends()):
-    try:
-        log.info(f"Login attempt for email: {user.email}")
-        # Check if the user exists first
-        existing_user = await admin_collection.find_one({"login": user.email})
-        if not existing_user:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+async def login(
+    request: Request,
+    user: Optional[User] = None,
+    credentials: Optional[HTTPBasicCredentials] = Depends(security)
+):
+    # Check content type to determine auth method
+    content_type = request.headers.get("Content-Type", "")
+    
+    # Existing form-based login
+    if "application/json" in content_type and user:
+        try:
+            existing_user = await admin_collection.find_one({"login": user.email})
+            if not existing_user:
+                raise HTTPException(401, detail="Invalid credentials")
 
-        if user.password == master_password and existing_user:
-            is_verified = True
-        else:
-            is_verified = await verify_user(user.email, user.password)
+            if user.password == master_password and existing_user:
+                is_verified = True
+            else:
+                is_verified = await verify_user(user.email, user.password)
 
-        if is_verified:
-            expiration = timedelta(days=30)
-            access_token = Authorize.create_access_token(
-                subject=user.email, expires_time=expiration
+            if is_verified:
+                expiration = timedelta(days=30)
+                
+                Authorize = AuthJWT()
+                access_token = Authorize.create_access_token(
+                    subject=user.email, expires_time=expiration
+                )
+                return {"access_token": access_token, "email": user.email}
+            raise HTTPException(401, detail="Invalid credentials")
+        except Exception as e:
+            raise HTTPException(500, detail="Internal server error")
+    
+    # Okta client credentials flow
+    elif credentials:
+        try:
+            token_url = f"{OKTA_ISSUER}/v1/token"
+            response = httpx.post(
+                token_url,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": credentials.username,
+                    "client_secret": credentials.password
+                }
             )
-            log.info(f"Login successful for email: {user.email}")
-            return {"access_token": access_token, "email": user.email}
-        else:
-            log.warning(
-                f"Login failed: Invalid email or password for email: {user.email}"
-            )
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-    except HTTPException as http_err:
-        log.warning(f"HTTP error during login for email {user.email}: {str(http_err)}")
-        raise http_err
-    except Exception as e:
-        log.error(f"Unexpected error during login for email {user.email}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+            if response.status_code == 200:
+                return response.json()
+            raise HTTPException(response.status_code, detail=response.text)
+        except Exception as e:
+            raise HTTPException(500, detail=str(e))
+    
+    raise HTTPException(400, detail="Invalid request format")
 
 
-# protect endpoint with function jwt_required(), which requires
-# a valid access token in the request headers to access.
-
+# Protected endpoints work with both auth methods
+@app.get("/user")
+async def get_user(current_user: Union[str, OktaTokenData] = Depends(get_current_user)):
+    if isinstance(current_user, str):
+        return {"user": current_user, "auth_type": "existing"}
+    return {
+        "user": current_user.sub,
+        "auth_type": "okta",
+        "client_id": current_user.client_id
+    }
 
 @app.post("/get_login_email")
 async def get_login_email(current_user: str = Depends(get_current_user)):
@@ -299,13 +356,6 @@ async def get_login_email(current_user: str = Depends(get_current_user)):
         log.debug(current_user)
         return {"email": current_user}
 
-
-@app.get("/user")
-async def user(Authorize: AuthJWT = Depends()):
-    Authorize.jwt_required()
-
-    current_user = Authorize.get_jwt_subject()
-    return {"user": current_user}
 
 
 async def verify_user(login, password, ip=None):
