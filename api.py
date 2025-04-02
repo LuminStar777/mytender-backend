@@ -22,6 +22,8 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.responses import StreamingResponse
@@ -127,8 +129,9 @@ from utils import (
     is_user_type,
     makemd5,
     has_permission_to_access_bid,
-    get_parent_user,
+    get_parent_user
 )
+from okta_middleware import OktaJWTMiddleware
 
 log = logging.getLogger(__name__)
 
@@ -198,6 +201,56 @@ class Settings(BaseModel):
 def get_config():
     return Settings()
 
+security = HTTPBasic()
+
+'''
+after proper setup of the okta account configuration
+we can run this middleware instead of any other url
+'''
+# # Add CORS middleware
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins="*",
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# # Add Okta JWT Middleware
+# app.add_middleware(OktaJWTMiddleware)
+
+
+@app.post('/token')
+async def login(credentials: HTTPBasicCredentials = Depends(security), request: Request = None):
+    issuer = "https://dev-77225952.okta.com"  # Replace with config
+    token_url = f"{issuer}/oauth2/v1/token"
+    print(token_url)
+
+    try:
+        # First try without nonce
+
+        # Retry with nonce
+        response = httpx.post(
+            token_url,
+            headers={
+                # "DPoP": dpop_proof,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            data={
+                "grant_type": "client_credentials",
+                "client_id": credentials.username,
+                "client_secret": credentials.password
+            }
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        print(response.text)
+        raise HTTPException(response.status_code, detail=response.text)
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(500, detail=str(e))
 
 ## review with nicolas
 @app.post("/login")
