@@ -6,6 +6,8 @@ import logging
 import os
 import traceback
 import uuid
+import httpx
+
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
@@ -22,12 +24,15 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import httpx
+from fastapi.security.http import HTTPAuthorizationCredentials
+
+
+from jose import jwt, JWTError
+from jose.constants import ALGORITHMS
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPBasicCredentials, HTTPBasic
 from jose import JWTError, jwt
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
@@ -38,6 +43,7 @@ from botocore.exceptions import ClientError
 from contextlib import asynccontextmanager
 
 from api_modules.bid_enhancer import process_rewrite_section
+
 from api_modules.company_library import (
     delete_content_library_item,
     process_create_upload_file,
@@ -57,7 +63,7 @@ from api_modules.generate_proposal import (
     process_generate_proposal,
     remove_references,
 )
-from api_modules.convert_html_to_docx import(
+from api_modules.convert_html_to_docx import (
     process_generate_docx
 )
 from api_modules.proposal_outline import (
@@ -129,27 +135,132 @@ from utils import (
     is_user_type,
     makemd5,
     has_permission_to_access_bid,
-    get_parent_user
+    get_parent_user,
 )
-from okta_middleware import OktaJWTMiddleware
+from pydantic import BaseModel
+import os
+
 
 log = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+token_auth = HTTPBearer()
+security = HTTPBasic()
+
+# "https://dev-77225952.okta.com/oauth2/default"
+OKTA_ISSUER = os.getenv('OKTA_ISSUER')
+OKTA_AUDIENCE = os.getenv('OKTA_AUDIENCE')  # "api://default"
+JWKS_URL = os.getenv('JWKS_URL')  # f"{OKTA_ISSUER}/v1/keys"
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+class TokenData(BaseModel):
+    client_id: str
+    scope: str = ""
+    sub: str = ""
+    groups: List[str] = []
+
+
+async def map_okta_to_org(okta_client_id: str) -> str:
+    org_map = {
+        "<okta-client-id>": "org1",
+        "<another-okta-id>": "org2",
+    }
+    return org_map.get(okta_client_id, "default-org")
+
+
+async def get_default_permissions(groups: List[str]) -> List[str]:
+    # Example logic based on group name
+    permissions = []
+    if "Admin" in groups:
+        permissions.append("admin:all")
+    if "Viewer" in groups:
+        permissions.append("read:only")
+    return permissions
+
+
+async def fetch_jwks():
+    """Fetch JSON Web Key Set from Okta"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(JWKS_URL, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to fetch JWKS: {str(e)}"
+            )
+
+
+async def verify_token(token: str) -> TokenData:
+    """Verify and decode JWT token"""
+    jwks = await fetch_jwks()
+
+    try:
+        # 1. Get the key ID from token headers
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+
+        # 2. Find the matching key in JWKS
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == kid:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"],
+                    "alg": key["alg"]
+                }
+                break
+
+        if not rsa_key:
+            raise HTTPException(
+                status_code=401,
+                detail="No matching key found in JWKS"
+            )
+
+        # 3. Verify and decode the token
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=[ALGORITHMS.RS256],
+            audience=OKTA_AUDIENCE,
+            issuer=OKTA_ISSUER
+        )
+
+        return TokenData(
+            client_id=payload.get("cid") or payload.get("sub"),
+            scope=" ".join(payload.get("scp", [])) or payload.get("scope", ""),
+            sub=payload.get("sub")
+        )
+
+    except JWTError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid token: {str(e)}"
+        )
+
+
+async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends(token_auth)):
+    """Extracts and verifies the token from the authorization header."""
+    token = authorization.credentials  # Extract token from the header
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # Decoding the token using python-jose
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
+        try:
+            token_data = await verify_token(token)
+            return token_data.get("sub")
+        except Exception:
+            # Decoding the token using python-jose
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if email is None:
+                raise credentials_exception
     except JWTError:
         return "default"
     return email
@@ -187,7 +298,9 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
 
 class User(BaseModel):
     email: str
-    password: str
+    password: Optional[str] = None  # optional for Okta login
+    okta_id: Optional[str] = None
+    okta_token: Optional[str] = None
 
 
 class Settings(BaseModel):
@@ -201,41 +314,20 @@ class Settings(BaseModel):
 def get_config():
     return Settings()
 
-security = HTTPBasic()
 
-'''
-after proper setup of the okta account configuration
-we can run this middleware instead of any other url
-'''
-# # Add CORS middleware
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins="*",
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# # Add Okta JWT Middleware
-# app.add_middleware(OktaJWTMiddleware)
+class OktaLoginRequest(BaseModel):
+    client_id: str
+    client_secret: str
 
 
-@app.post('/token')
-async def login(credentials: HTTPBasicCredentials = Depends(security), request: Request = None):
-    issuer = "https://dev-77225952.okta.com"  # Replace with config
-    token_url = f"{issuer}/oauth2/v1/token"
-    print(token_url)
+@app.post('/okta_login')
+async def login(credentials: HTTPBasicCredentials = Depends(security)):
+    token_url = f"{OKTA_ISSUER}/v1/token"
 
     try:
-        # First try without nonce
-
-        # Retry with nonce
         response = httpx.post(
             token_url,
-            headers={
-                # "DPoP": dpop_proof,
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
             data={
                 "grant_type": "client_credentials",
                 "client_id": credentials.username,
@@ -245,14 +337,43 @@ async def login(credentials: HTTPBasicCredentials = Depends(security), request: 
 
         if response.status_code == 200:
             return response.json()
-        print(response.text)
         raise HTTPException(response.status_code, detail=response.text)
 
     except Exception as e:
-        print(e)
         raise HTTPException(500, detail=str(e))
 
-## review with nicolas
+
+@app.post("/okta_verify_token")
+async def okta_login(
+    credentials: HTTPAuthorizationCredentials = Depends(token_auth)
+):
+    try:
+        token_data = await verify_token(credentials.credentials)
+        user_email = token_data.sub
+        print('it is here')
+
+        existing_user = await admin_collection.find_one({"login": user_email})
+        if not existing_user:
+            # Create a new user in DB
+            new_user = {
+                "login": user_email,
+                "okta_id": token_data.client_id,
+                "organization_id": await map_okta_to_org(token_data.client_id),
+                "permissions": await get_default_permissions(token_data.scope),
+            }
+            await admin_collection.insert_one(new_user)
+
+        return {
+            "access_token": credentials.credentials,
+            "email": user_email,
+        }
+
+    except Exception as e:
+        log.error(f"Okta login failed: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid Okta token")
+
+
+# review with nicolas
 @app.post("/login")
 async def login(user: User, Authorize: AuthJWT = Depends()):
     try:
@@ -261,12 +382,10 @@ async def login(user: User, Authorize: AuthJWT = Depends()):
         existing_user = await admin_collection.find_one({"login": user.email})
         if not existing_user:
             raise HTTPException(status_code=401, detail="Invalid credentials")
-
         if user.password == master_password and existing_user:
             is_verified = True
         else:
             is_verified = await verify_user(user.email, user.password)
-
         if is_verified:
             expiration = timedelta(days=30)
             access_token = Authorize.create_access_token(
@@ -275,15 +394,19 @@ async def login(user: User, Authorize: AuthJWT = Depends()):
             log.info(f"Login successful for email: {user.email}")
             return {"access_token": access_token, "email": user.email}
         else:
+            print('here are some warning')
             log.warning(
                 f"Login failed: Invalid email or password for email: {user.email}"
             )
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(
+                status_code=401, detail="Invalid email or password")
     except HTTPException as http_err:
-        log.warning(f"HTTP error during login for email {user.email}: {str(http_err)}")
+        log.warning(
+            f"HTTP error during login for email {user.email}: {str(http_err)}")
         raise http_err
     except Exception as e:
-        log.error(f"Unexpected error during login for email {user.email}: {str(e)}")
+        log.error(
+            f"Unexpected error during login for email {user.email}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -301,11 +424,12 @@ async def get_login_email(current_user: str = Depends(get_current_user)):
 
 
 @app.get("/user")
-async def user(Authorize: AuthJWT = Depends()):
-    Authorize.jwt_required()
+async def user(current_user: str = Depends(get_current_user)):
+    # Authorize.jwt_required()
 
-    current_user = Authorize.get_jwt_subject()
-    return {"user": current_user}
+    # current_user = Authorize.get_jwt_subject()
+    # return {"user": current_user}
+    return {"email": current_user}
 
 
 async def verify_user(login, password, ip=None):
@@ -425,7 +549,8 @@ async def question(
         if word_amount is not None:
             if selected_choices is not None:
                 log.info(f"selected_choices: {selected_choices}")
-                word_amounts = calculate_word_amounts(selected_choices, word_amount)
+                word_amounts = calculate_word_amounts(
+                    selected_choices, word_amount)
                 log.info(f"word_amounts: {word_amounts}")
 
         log.info(
@@ -464,7 +589,8 @@ async def question(
             )
     except Exception as e:
         log.error(f"Error processing request: {str(e)}")
-        log.exception("Full exception details:")  # This logs the full traceback
+        # This logs the full traceback
+        log.exception("Full exception details:")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -529,8 +655,9 @@ async def generate_proposal(
 
     return {"updated_outline": result["updated_outline"]}
 
+
 @app.post("/generate_docx")
-async def generate_docx(bid_id: str = Form(...), current_user = Depends(get_current_user)):
+async def generate_docx(bid_id: str = Form(...), current_user=Depends(get_current_user)):
     """
     Generate a DOCX file using just the bid ID
     The backend will fetch all necessary section data
@@ -550,7 +677,9 @@ async def generate_docx(bid_id: str = Form(...), current_user = Depends(get_curr
 
     except Exception as e:
         log.info(f"Error generating document: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generating document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating document: {str(e)}")
+
 
 @app.post("/get_proposal")
 async def get_proposal(
@@ -604,8 +733,10 @@ async def get_proposal_pdf(
         )
 
     if "generated_proposal_pdf" not in bid:
-        log.error(f"No PDF found in bid {bid_id}. Available fields: {list(bid.keys())}")
-        raise HTTPException(status_code=404, detail="No PDF version found for this bid")
+        log.error(
+            f"No PDF found in bid {bid_id}. Available fields: {list(bid.keys())}")
+        raise HTTPException(
+            status_code=404, detail="No PDF version found for this bid")
 
     pdf_data = bid["generated_proposal_pdf"]
     log.info(
@@ -662,7 +793,8 @@ async def generate_outline(
     file_names: List[str] = Body(...),
     extra_instructions: str = Body(...),
     datasets: List[str] = Body(...),
-    newbid: bool = Body(False),  # Added optional boolean field with default value
+    # Added optional boolean field with default value
+    newbid: bool = Body(False),
     current_user: str = Depends(get_current_user),
 ):
     log.info(f"Received bid_id: {bid_id}")
@@ -677,7 +809,8 @@ async def generate_outline(
         )
         return outline
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/get_bid_outline")
@@ -736,7 +869,8 @@ async def update_status(
         # Convert bid_id string to ObjectId
         try:
             bid_object_id = ObjectId(data.bid_id)
-            log.info(f"Successfully converted bid_id to ObjectId: {bid_object_id}")
+            log.info(
+                f"Successfully converted bid_id to ObjectId: {bid_object_id}")
         except Exception as e:
             log.info(f"Error converting bid_id to ObjectId: {e}")
             raise HTTPException(
@@ -782,7 +916,8 @@ async def update_status(
             raise HTTPException(status_code=404, detail="Section not found")
 
         log.info(f"Found section at index {section_index}")
-        log.info(f"Current section status: {outline[section_index].get('status')}")
+        log.info(
+            f"Current section status: {outline[section_index].get('status')}")
         log.info(f"Updating to new status: {data.status}")
 
         # Update the status of the section
@@ -849,7 +984,8 @@ async def update_section(
 
         # Validate section index
         if data.section_index < 0 or data.section_index >= len(outline):
-            raise HTTPException(status_code=400, detail="Invalid section index")
+            raise HTTPException(
+                status_code=400, detail="Invalid section index")
 
         # Update the section at the specified index
         outline[data.section_index] = {
@@ -950,7 +1086,8 @@ async def add_section(
             raise HTTPException(status_code=404, detail="Bid not found")
 
         if not await has_permission_to_access_bid(bid, current_user):
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise HTTPException(
+                status_code=403, detail="Insufficient permissions")
 
         section_id = str(uuid.uuid4())
         new_section = {
@@ -974,7 +1111,8 @@ async def add_section(
         )
 
         if result.modified_count == 0:
-            raise HTTPException(status_code=500, detail="Failed to add section")
+            raise HTTPException(
+                status_code=500, detail="Failed to add section")
 
         return {
             "status": "success",
@@ -1264,7 +1402,8 @@ async def delete_subheading(
             )
 
         # Use $pull to remove the matching subheading from the array
-        update_query = {"_id": bid_object_id, "outline.section_id": request.section_id}
+        update_query = {"_id": bid_object_id,
+                        "outline.section_id": request.section_id}
         update_operation = {
             "$pull": {"outline.$.subheadings": {"subheading_id": request.subheading_id}}
         }
@@ -1381,7 +1520,8 @@ async def uploadfile_tenderlibrary(
 
         # Update the bid document with the new tender library item
         result = await bids_collection.update_one(
-            {"_id": bid_object_id}, {"$push": {"tender_library": tender_library_item}}
+            {"_id": bid_object_id}, {
+                "$push": {"tender_library": tender_library_item}}
         )
         if result.modified_count == 0:
             raise HTTPException(
@@ -1541,7 +1681,8 @@ async def delete_file_tenderlibrary(
             try:
                 await fs.delete(file_doc["file_id"])
             except Exception as gridfs_error:
-                log.error(f"Error deleting file from GridFS: {str(gridfs_error)}")
+                log.error(
+                    f"Error deleting file from GridFS: {str(gridfs_error)}")
                 # Continue with removal from tender library even if GridFS deletion fails
 
         # Remove the file reference from the tender library
@@ -1636,7 +1777,8 @@ async def get_tender_library_doc_filenames(
         return {"filenames": filenames}
 
     except Exception as e:
-        log.error(f"An error occurred in get_tender_library_doc_filenames: {str(e)}")
+        log.error(
+            f"An error occurred in get_tender_library_doc_filenames: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1690,7 +1832,8 @@ async def generate_differentiation_opportunities(
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/generate_tender_insights")
@@ -1715,7 +1858,8 @@ async def generate_tender_insights(
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/assign_insights_to_outline_questions")
@@ -1740,7 +1884,8 @@ async def assign_insights_to_outline_questions(
 
     updated_outline = await asyncio.gather(
         *[
-            assign_insights_to_question(section, bid_intel, extract_insights_prompt)
+            assign_insights_to_question(
+                section, bid_intel, extract_insights_prompt)
             for section in updated_outline
         ]
     )
@@ -1832,7 +1977,8 @@ async def generate_compliance_requirements(
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/generate_opportunity_information")
@@ -1856,7 +2002,8 @@ async def generate_opportunity_information(
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/generate_exec_summary")
@@ -1906,7 +2053,8 @@ async def generate_exec_summary(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/generate_cover_letter")
@@ -1956,7 +2104,8 @@ async def generate_cover_letter(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/show_tenderLibrary_file_content_word_format")
@@ -1983,7 +2132,8 @@ async def show_tenderLibrary_file_content_word_format(
         # Find the specific file in the tender library
         tender_library = bid.get("tender_library", [])
         file_document = next(
-            (doc for doc in tender_library if doc.get("filename") == file_name), None
+            (doc for doc in tender_library if doc.get(
+                "filename") == file_name), None
         )
         if not file_document or "rawtext" not in file_document:
             raise HTTPException(
@@ -1993,7 +2143,8 @@ async def show_tenderLibrary_file_content_word_format(
         # Return the pre-parsed text content
         return {"content": file_document["rawtext"]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/show_tenderLibrary_file_content_pdf_format")
@@ -2020,7 +2171,8 @@ async def show_tenderLibrary_file_content_pdf_format(
         # Find the specific file in the tender library
         tender_library = bid.get("tender_library", [])
         file_document = next(
-            (doc for doc in tender_library if doc.get("filename") == file_name), None
+            (doc for doc in tender_library if doc.get(
+                "filename") == file_name), None
         )
 
         if not file_document:
@@ -2058,8 +2210,11 @@ async def show_tenderLibrary_file_content_pdf_format(
             )
 
     except Exception as e:
-        log.error(f"Error in show_tenderLibrary_file_content_pdf_format: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        log.error(
+            f"Error in show_tenderLibrary_file_content_pdf_format: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
+
 
 @app.get("/get_timestamp/{bid_id}")
 async def get_timestamp(
@@ -2087,7 +2242,8 @@ async def get_timestamp(
 
         # Check if timestamp exists
         if not timestamp:
-            raise HTTPException(status_code=404, detail="Timestamp not found for this bid")
+            raise HTTPException(
+                status_code=404, detail="Timestamp not found for this bid")
 
         # Return the timestamp
         return {"status": "success", "bid_id": bid_id, "timestamp": timestamp}
@@ -2102,6 +2258,7 @@ async def get_timestamp(
         raise HTTPException(
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
+
 
 @app.get("/get_bid/{bid_id}")
 async def get_bid(
@@ -2146,6 +2303,7 @@ async def get_bid(
         raise HTTPException(
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
+
 
 @app.post("/upload_bids")
 async def upload_bids(
@@ -2252,7 +2410,8 @@ async def upload_bids(
         try:
             selectedFolders_list = json.loads(selectedFolders)
         except json.JSONDecodeError as e:
-            log.info(f"JSON decoding error for selected folders field: {str(e)}")
+            log.info(
+                f"JSON decoding error for selected folders field: {str(e)}")
             raise HTTPException(
                 status_code=422, detail=f"Invalid JSON format: {str(e)}"
             )
@@ -2318,7 +2477,8 @@ async def upload_bids(
                 "customer_pain_points": customer_pain_points_list,
                 "differentiating_factors": differentiating_factors_list,
                 "solution": solution_data,
-                "selectedCaseStudies": selected_case_studies_data,  # Add selectedCaseStudies to the update operation
+                # Add selectedCaseStudies to the update operation
+                "selectedCaseStudies": selected_case_studies_data,
                 "tone_of_voice": tone_of_voice,
                 "new_bid_completed": new_bid_completed,
             }
@@ -2342,6 +2502,7 @@ async def upload_bids(
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
 
+
 @app.post("/get_bids_list")
 async def get_bids_list(current_user: str = Depends(get_current_user)):
     try:
@@ -2350,12 +2511,15 @@ async def get_bids_list(current_user: str = Depends(get_current_user)):
 
         parent_user_doc = await admin_collection.find_one({"login": parent_user})
         if not parent_user_doc:
-            raise HTTPException(status_code=404, detail="Parent user not found")
+            raise HTTPException(
+                status_code=404, detail="Parent user not found")
 
         parent_user_organisation_id = parent_user_doc.get("organisation_id")
-        if not parent_user_organisation_id: # Handles both non-existent field, None, or empty string
-            log.warning(f"Parent user for current user: {current_user} has no organisation_id")
-            raise HTTPException(status_code=400, detail="Parent user has missing or empty organisation_id")
+        if not parent_user_organisation_id:  # Handles both non-existent field, None, or empty string
+            log.warning(
+                f"Parent user for current user: {current_user} has no organisation_id")
+            raise HTTPException(
+                status_code=400, detail="Parent user has missing or empty organisation_id")
 
         log.info(
             f"Fetching bids for user: {current_user} with parent user: {parent_user}"
@@ -2418,7 +2582,8 @@ async def update_bid_status(
 
         if await is_user_type(current_user, "reviewer"):
             log.info("user doesn't have permission")
-            raise HTTPException(status_code=403, detail="Writers don't have permission to manage bids")
+            raise HTTPException(
+                status_code=403, detail="Writers don't have permission to manage bids")
 
         # Update the bid status
         result = await bids_collection.update_one(
@@ -2474,7 +2639,8 @@ async def update_bid_qualification_result(
 
         if await is_user_type(current_user, "reviewer"):
             log.info("user doesn't have permission")
-            raise HTTPException(status_code=403, detail="Writers don't have permission to manage bids")
+            raise HTTPException(
+                status_code=403, detail="Writers don't have permission to manage bids")
 
         # Update the bid status
         result = await bids_collection.update_one(
@@ -2528,7 +2694,8 @@ async def delete_bid(
             )
         if await is_user_type(current_user, "reviewer"):
             log.info("user doesn't have permission")
-            raise HTTPException(status_code=403, detail="Writers don't have permission to delete bids")
+            raise HTTPException(
+                status_code=403, detail="Writers don't have permission to delete bids")
 
         # Proceed with bid deletion
         result = await bids_collection.delete_one({"_id": ObjectId(bid_id)})
@@ -2577,13 +2744,15 @@ async def create_upload_folder(
         return result
     except HTTPException as e:
         # Log the error for debugging
-        log.error(f"HTTP exception in create_upload_folder: {e.status_code} - {e.detail}")
+        log.error(
+            f"HTTP exception in create_upload_folder: {e.status_code} - {e.detail}")
         # Re-raise the exception to ensure it's properly sent to the client
         raise e
     except Exception as e:
         # Log unexpected errors
         log.error(f"Unexpected error in create_upload_folder: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
 
 @app.post("/create_upload_folder_case_studies")
 async def create_upload_folder_case_studies(
@@ -2629,7 +2798,8 @@ async def move_file(
         return result
     except Exception as e:
         log.error(f"Error moving file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to move file: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to move file: {str(e)}")
 
 
 @app.post("/show_file_content")
@@ -2880,7 +3050,7 @@ async def add_user(request: GenericDict, current_user: str = Depends(get_current
     adminuser = await load_admin_prompts()
     r["question_extractor"] = adminuser["question_extractor"]
 
-    #generate random organisation id
+    # generate random organisation id
     r["organisation_id"] = str(uuid.uuid4())
 
     # insert r into admin_user and overwrite if it already exists
@@ -3059,7 +3229,8 @@ async def send_organisation_email(
     except Exception as e:
         # Get detailed traceback
         error_traceback = traceback.format_exc()
-        log.error(f"Error sending organisation email: {str(e)}\n{error_traceback}")
+        log.error(
+            f"Error sending organisation email: {str(e)}\n{error_traceback}")
         return {"error": str(e)}
 
 
@@ -3137,6 +3308,7 @@ class UpdateProfileRequest(BaseModel):
 @app.get("/profile")
 async def get_profile(current_user: str = Depends(get_current_user)):
     try:
+        print('find the current url', current_user)
         log.info(current_user)
         # Explicitly exclude company_logo field from the query
         user_record = await admin_collection.find_one(
@@ -3155,7 +3327,8 @@ async def get_profile(current_user: str = Depends(get_current_user)):
         log.error(
             f"Error fetching user profile: {str(e)}\nTraceback: {error_traceback}"
         )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 class InviteRequest(BaseModel):
@@ -3238,7 +3411,8 @@ async def forgot_password_update(request: ForgotPasswordUpdateRequest):
         # Find the user by reset token
         user = await admin_collection.find_one({"reset_token": request.token})
         if not user:
-            raise HTTPException(status_code=404, detail="Invalid or expired token")
+            raise HTTPException(
+                status_code=404, detail="Invalid or expired token")
 
         # Check if the reset token has expired
         reset_token_expiry = user.get("reset_token_expiry")
@@ -3372,7 +3546,8 @@ async def generate_diagram(
             headers={"Content-Disposition": "inline; filename=diagram.png"},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.post("/remove_references", status_code=status.HTTP_200_OK)
@@ -3413,7 +3588,8 @@ async def upload_zip(
 
     log.info(profile_name)
     if not zip_file.filename.lower().endswith(".zip"):
-        raise HTTPException(status_code=400, detail="File must be a ZIP archive")
+        raise HTTPException(
+            status_code=400, detail="File must be a ZIP archive")
 
     try:
         result = await zip_bulk_upload(
@@ -3440,7 +3616,8 @@ async def set_company_logo(
 
         # Validate that it's an image file
         if not file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail="File must be an image")
+            raise HTTPException(
+                status_code=400, detail="File must be an image")
 
         # Convert to base64
         base64_image = base64.b64encode(contents).decode("utf-8")
