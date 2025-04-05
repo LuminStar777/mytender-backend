@@ -1,6 +1,7 @@
 import logging
 import os
-
+from pydantic import BaseModel
+from typing import List, Dict
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
@@ -233,3 +234,16 @@ async def load_admin_prompts():
     """Load admin prompts"""
     prompts = await admin_collection.find_one({"login": "adminuser"})
     return prompts
+
+'''OKTA configurations'''
+OKTA_ISSUER = os.getenv('OKTA_ISSUER')
+OKTA_AUDIENCE = os.getenv('OKTA_AUDIENCE')  # "api://default"
+JWKS_URL = os.getenv('JWKS_URL')  # f"{OKTA_ISSUER}/v1/keys"
+
+class OktaGroupingConfig(BaseModel):
+    GROUP_MAPPING: Dict[str, List[str]] = {
+        "Admin": ["admin:all", "read:all"],
+        "Viewer": ["read:only"],
+        "Editor": ["read:all", "write:all"]
+    }
+    DEFAULT_PERMISSIONS: List[str] = ["read:self"]

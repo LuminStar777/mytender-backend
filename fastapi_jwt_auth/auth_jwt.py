@@ -186,13 +186,13 @@ class AuthJWT(AuthConfig):
             secret_key = self._get_secret_key(algorithm,"encode")
         except Exception:
             raise
-
+        
         return jwt.encode(
             {**reserved_claims, **custom_claims, **user_claims},
             secret_key,
             algorithm=algorithm,
             headers=headers
-        ).decode('utf-8')
+        )
 
     def _has_token_in_denylist_callback(self) -> bool:
         """

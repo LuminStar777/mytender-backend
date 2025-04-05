@@ -7,10 +7,10 @@ import os
 import traceback
 import uuid
 import httpx
-
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-
+from pydantic import BaseModel
 from bson import ObjectId, json_util
 from docx import Document as DocxDocument
 from fastapi import (
@@ -25,7 +25,6 @@ from fastapi import (
     status,
 )
 from fastapi.security.http import HTTPAuthorizationCredentials
-
 
 from jose import jwt, JWTError
 from jose.constants import ALGORITHMS
@@ -104,6 +103,10 @@ from config import (
     master_password,
     get_gridfs,
     openai_instance_mini,
+    OKTA_AUDIENCE,
+    OKTA_ISSUER,
+    JWKS_URL,
+    OktaGroupingConfig
 )
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
@@ -137,8 +140,21 @@ from utils import (
     has_permission_to_access_bid,
     get_parent_user,
 )
-from pydantic import BaseModel
-import os
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This code will be executed before the application starts taking requests
+    yield
+    # This code will be executed after the application finishes handling requests
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You might want to be more specific in production.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 log = logging.getLogger(__name__)
@@ -147,49 +163,79 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 token_auth = HTTPBearer()
 security = HTTPBasic()
 
-# "https://dev-77225952.okta.com/oauth2/default"
-OKTA_ISSUER = os.getenv('OKTA_ISSUER')
-OKTA_AUDIENCE = os.getenv('OKTA_AUDIENCE')  # "api://default"
-JWKS_URL = os.getenv('JWKS_URL')  # f"{OKTA_ISSUER}/v1/keys"
-
 
 class TokenData(BaseModel):
     client_id: str
     scope: str = ""
     sub: str = ""
-    groups: List[str] = []
+    # exp: Optional[int] = None
+    # refresh_token: Optional[str] = None
+    
+class User(BaseModel):
+    email: str
+    password: Optional[str] = None  # optional for Okta login
+    okta_id: Optional[str] = None
+    okta_token: Optional[str] = None
+
+
+class Settings(BaseModel):
+    authjwt_secret_key: str = SECRET_KEY
+
+
+class OktaLoginRequest(BaseModel):
+    client_id: str
+    client_secret: str
+
+
+@AuthJWT.load_config
+def get_config():
+    return Settings()
+
+
+
+@app.exception_handler(AuthJWTException)
+def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+    _ = request
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+
+
 
 
 async def map_okta_to_org(okta_client_id: str) -> str:
-    org_map = {
-        "<okta-client-id>": "org1",
-        "<another-okta-id>": "org2",
-    }
-    return org_map.get(okta_client_id, "default-org")
-
+    # First-time Okta client — create new org
+    new_org_id = str(uuid.uuid4())  # Or some other org ID generator
+    return new_org_id
 
 async def get_default_permissions(groups: List[str]) -> List[str]:
-    # Example logic based on group name
-    permissions = []
-    if "Admin" in groups:
-        permissions.append("admin:all")
-    if "Viewer" in groups:
-        permissions.append("read:only")
-    return permissions
+    """Safely map Okta groups to permissions with validation"""
+    config = OktaGroupingConfig()
+    permissions = set(config.DEFAULT_PERMISSIONS)
+    
+    for group in groups:
+        if group in config.GROUP_MAPPING:
+            permissions.update(config.GROUP_MAPPING[group])
+    
+    return list(permissions)
 
 
-async def fetch_jwks():
-    """Fetch JSON Web Key Set from Okta"""
+
+async def fetch_jwks() -> dict:
+    """Fetch JSON Web Key Set from Okta with retry logic"""
     async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(JWKS_URL, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except httpx.RequestError as e:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Failed to fetch JWKS: {str(e)}"
-            )
+        for attempt in range(3):
+            try:
+                response = await client.get(JWKS_URL, timeout=10)
+                response.raise_for_status()
+                return response.json()
+            except httpx.RequestError as e:
+                if attempt == 2:
+                    log.error(f"Failed to fetch JWKS after 3 attempts: {str(e)}")
+                    raise HTTPException(
+                        status_code=502,
+                        detail="Unable to verify token: JWKS endpoint unavailable"
+                    )
+                await asyncio.sleep(1 * (attempt + 1))
 
 
 async def verify_token(token: str) -> TokenData:
@@ -254,7 +300,8 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
     try:
         try:
             token_data = await verify_token(token)
-            return token_data.get("sub")
+            print('here is the data',token_data.sub)
+            return token_data.sub
         except Exception:
             # Decoding the token using python-jose
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -265,30 +312,6 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
         return "default"
     return email
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # This code will be executed before the application starts taking requests
-    yield
-    # This code will be executed after the application finishes handling requests
-
-
-app = FastAPI(lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # You might want to be more specific in production.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.exception_handler(AuthJWTException)
-def authjwt_exception_handler(request: Request, exc: AuthJWTException):
-    _ = request
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
-
-
 # pylint: disable=too-many-arguments
 
 # provide a method to create access tokens. The create_access_token()
@@ -296,28 +319,7 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
 # later in endpoint protected
 
 
-class User(BaseModel):
-    email: str
-    password: Optional[str] = None  # optional for Okta login
-    okta_id: Optional[str] = None
-    okta_token: Optional[str] = None
 
-
-class Settings(BaseModel):
-    authjwt_secret_key: str = SECRET_KEY
-
-
-# callback to get your configuration
-
-
-@AuthJWT.load_config
-def get_config():
-    return Settings()
-
-
-class OktaLoginRequest(BaseModel):
-    client_id: str
-    client_secret: str
 
 
 @app.post('/okta_login')
@@ -355,11 +357,12 @@ async def okta_login(
         existing_user = await admin_collection.find_one({"login": user_email})
         if not existing_user:
             # Create a new user in DB
+            scope = token_data.scope.split() if token_data.scope else []
             new_user = {
                 "login": user_email,
                 "okta_id": token_data.client_id,
                 "organization_id": await map_okta_to_org(token_data.client_id),
-                "permissions": await get_default_permissions(token_data.scope),
+                "permissions": await get_default_permissions(scope),
             }
             await admin_collection.insert_one(new_user)
 
