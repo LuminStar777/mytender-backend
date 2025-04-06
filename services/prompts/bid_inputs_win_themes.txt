@@ -1,0 +1,74 @@
+Win Theme Extraction
+
+Objective:
+To extract and articulate win themes that align directly with the client’s priorities, demonstrate our strengths, and expose competitor weaknesses—supported by credible, evidence-based metrics. Win themes must tell a compelling, client-specific story grounded in demonstrable value and validated through internal bid records and stakeholder insight.
+
+Instructions
+1. Input Section
+Use the categories below to gather only relevant insights that directly support win theme development. Do not include excess background material that does not contribute to theme creation.
+
+Client Intelligence and Priorities
+• Documented buyer hot buttons and known pain points
+• Previous feedback on wins or losses with this specific client
+• Client’s strategic objectives and measurable KPIs
+• Profiles of decision-makers and their personal or professional priorities
+
+RFP / ITT Analysis
+• Evaluation criteria and their weightings
+• Specific language, phrases, or terminology used by the client
+• Underlying needs that go beyond the formally stated requirements
+• Budget constraints and value-for-money expectations
+
+Competitor Assessment
+• Known weaknesses in competitor offerings for this opportunity
+• Areas where our organisation has clear, demonstrable advantages
+• Opportunities for meaningful market differentiation
+• Anticipated undercutting or tactical plays from competitors
+
+Internal Capabilities
+• Proven performance metrics from similar or relevant contracts
+• Documented successes and outcome-based case studies
+• Unique methodologies or proprietary solutions that add measurable value
+• Team expertise, certifications, or credentials that match bid requirements
+
+Evidence Base
+• Quantifiable results from comparable projects—no placeholders
+• Verified client testimonials and reference quotes
+• Relevant industry recognition, awards, or accreditations
+• Compliance records, audit results, and QA documentation
+
+Sector-Specific Context
+• Applicable regulatory or compliance requirements in the client’s sector
+• Sector-specific challenges and emerging trends the client must navigate
+• Social value or sustainability considerations important to the client
+• Broader stakeholder expectations (e.g. regulators, boards, community groups)
+
+2. Output Section: Win Themes
+Use the input data to craft concise win themes that are tailored to the client’s unique priorities and the evaluation criteria.
+
+Each win theme must:
+• Address a specific client need, objective, or risk
+• Be tied to one or more evaluation criteria
+• Highlight our unique strengths or differentiators
+• Undermine or contrast competitor weaknesses
+• Be backed by specific, real-world evidence—no placeholders
+• Present a compelling reason why our solution offers best value and lowest risk
+
+Where possible, connect the client’s past pain points with our successful, proven delivery in similar contexts.
+
+3. Formatting Requirements
+• Do not use commas or hyphens to separate bullet points—use line breaks with bullets only
+• Each win theme must have a clear heading in bold followed by a single line break before the bullet list begins
+• Use one bullet per line—no multi-sentence bullets; break into new bullets for each idea
+• Start each bullet with a capital letter and do not run bullets into each other as continuous text
+• Use the following bullet structure per theme (in this exact order):
+• Addressed Client Need
+• Evaluation Criteria Alignment
+• Unique Strength / Differentiator
+• Competitor Weakness (if known)
+• Evidence / Metric (with citation if available)
+• Compelling Reason to Choose Us
+• Leave one clear line break between each win theme
+• Write in client-focused, plain English—avoid jargon
+• All data must be current, verified, and traceable to internal bid records
+• Use parentheses to indicate citation sources (e.g. Source: Project Report, 2023)

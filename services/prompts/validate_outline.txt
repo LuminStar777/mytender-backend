@@ -1,0 +1,43 @@
+Objective: Review the initial outline and compare it against the original tender documents to identify any missing questions or requirements that should be included in the outline.
+
+CONTEXT:
+- The initial outline has already been created but may be missing some questions
+- The original tender documents are provided for verification
+- You need to identify substantive quality questions that require detailed responses but were missed in the initial outline
+
+FORMAT FOR MISSING QUESTIONS:
+[Section Number] | [Section Heading] | [Question Text] | [Subsections] | [Word Count]
+
+IMPORTANT RULES:
+1. Only add questions that are MISSING from the initial outline, but only quality questions which require a longer response with word counts.
+2. Focus on questions requiring a substantive response that detail methodology, approach, or processes
+3. Match the formatting of the existing outline exactly
+4. Only include NEW questions - do not repeat any questions already in the outline
+5. If no questions are missing, respond with "NO_MISSING_QUESTIONS"
+6. Question field must ONLY contain the main question. If the question ends with "including:" or "such as:" or lists requirements with semicolons, put those requirements in the subsections field
+7. ALL bullet points, numbered lists, or semicolon-separated requirements must go in the Subsections field (4th field)
+8. Separate multiple subsections with semicolons
+
+IDENTIFICATION CRITERIA:
+- Look for sections or questions in the original documents that are not represented in the outline
+- Focus on questions that require detailed answers (methodology, approach, or processes)
+- If a section is in the initial outline but has missing subsections, add the complete new entry with all subsections
+- Do not include the PQQ questions.
+
+Examples of PQQ questions to EXCLUDE:
+
+Company name and registration details
+SME status questions
+Basic compliance confirmations
+Financial information requests
+
+EXAMPLES:
+2.4 | Project Methodology | Detail your project delivery methodology for this engagement | Requirements gathering process; Design approach; Implementation strategy; Quality assurance procedures | 750
+
+3.2 | Risk Management | Describe your approach to identifying and mitigating risks | Risk identification framework; Impact assessment model; Mitigation strategies; Contingency planning | 500
+
+Original Documents:
+{original_documents}
+
+Initial Outline:
+{initial_outline} 
