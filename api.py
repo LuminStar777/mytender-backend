@@ -141,6 +141,7 @@ from utils import (
     get_parent_user,
 )
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This code will be executed before the application starts taking requests
@@ -169,8 +170,9 @@ class TokenData(BaseModel):
     scope: str = ""
     sub: str = ""
     # exp: Optional[int] = None
-    # refresh_token: Optional[str] = None
-    
+    access_token: Optional[str] = None
+
+
 class User(BaseModel):
     email: str
     password: Optional[str] = None  # optional for Okta login
@@ -182,15 +184,30 @@ class Settings(BaseModel):
     authjwt_secret_key: str = SECRET_KEY
 
 
+class OktaUserData(BaseModel):
+    name: Optional[str] = None
+    email: str
+    sub: str  # Okta user ID
+    locale: Optional[str] = None
+    preferred_username: Optional[str] = None
+
+
+class OktaTokens(BaseModel):
+    access_token: str
+    access_token_exp: int
+    refresh_token: Optional[str] = None
+    refresh_token_exp: int
+    id_token: str
+
+
 class OktaLoginRequest(BaseModel):
-    client_id: str
-    client_secret: str
+    user: OktaUserData
+    tokens: OktaTokens
 
 
 @AuthJWT.load_config
 def get_config():
     return Settings()
-
 
 
 @app.exception_handler(AuthJWTException)
@@ -199,25 +216,50 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
-
-
-
 async def map_okta_to_org(okta_client_id: str) -> str:
     # First-time Okta client — create new org
     new_org_id = str(uuid.uuid4())  # Or some other org ID generator
     return new_org_id
 
+
 async def get_default_permissions(groups: List[str]) -> List[str]:
     """Safely map Okta groups to permissions with validation"""
     config = OktaGroupingConfig()
     permissions = set(config.DEFAULT_PERMISSIONS)
-    
+
     for group in groups:
         if group in config.GROUP_MAPPING:
             permissions.update(config.GROUP_MAPPING[group])
-    
+
     return list(permissions)
 
+
+async def exchange_refresh_token(refresh_token: str, okta_client: str) -> str:
+    """Exchange a refresh token for a new access token in a PKCE flow (SPA)"""
+    print('here are existing user', refresh_token,okta_client)
+    async with httpx.AsyncClient() as client:
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        data = {
+            "grant_type": "refresh_token",
+            "client_id": okta_client,
+            "refresh_token": refresh_token,
+            "scope": "openid profile email"
+        }
+
+        try:
+            response = await client.post(f"{OKTA_ISSUER}/v1/token", headers=headers, data=data)
+            response.raise_for_status()
+            tokens = response.json()
+            print('getting refresh token', tokens)
+            return tokens["access_token"]
+        except httpx.HTTPError as e:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Failed to refresh token: {str(e)}"
+            )
 
 
 async def fetch_jwks() -> dict:
@@ -230,7 +272,8 @@ async def fetch_jwks() -> dict:
                 return response.json()
             except httpx.RequestError as e:
                 if attempt == 2:
-                    log.error(f"Failed to fetch JWKS after 3 attempts: {str(e)}")
+                    log.error(
+                        f"Failed to fetch JWKS after 3 attempts: {str(e)}")
                     raise HTTPException(
                         status_code=502,
                         detail="Unable to verify token: JWKS endpoint unavailable"
@@ -241,10 +284,12 @@ async def fetch_jwks() -> dict:
 async def verify_token(token: str) -> TokenData:
     """Verify and decode JWT token"""
     jwks = await fetch_jwks()
+    print('here is the jwks', jwks)
 
     try:
         # 1. Get the key ID from token headers
         unverified_header = jwt.get_unverified_header(token)
+        print('unverified header', unverified_header)
         kid = unverified_header.get("kid")
 
         # 2. Find the matching key in JWKS
@@ -275,11 +320,24 @@ async def verify_token(token: str) -> TokenData:
             audience=OKTA_AUDIENCE,
             issuer=OKTA_ISSUER
         )
+        client_id = payload.get("cid") or payload.get("sub")
+        existing_user = await admin_collection.find_one({"okta_id": client_id})
+        if not existing_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        current_time = datetime.now().timestamp()
+        exp_time_access_token = existing_user.get("access_token_exp")
+        print('the expiry time is',exp_time_access_token,exp_time_access_token - current_time)
+        if exp_time_access_token and (exp_time_access_token - current_time) < 300:  # 5 minutes
+            
+            refresh_token = existing_user.get("refresh_token")
+            
+            new_access_token = await exchange_refresh_token(refresh_token, client_id)
 
         return TokenData(
             client_id=payload.get("cid") or payload.get("sub"),
             scope=" ".join(payload.get("scp", [])) or payload.get("scope", ""),
-            sub=payload.get("sub")
+            sub=payload.get("sub"),
+            access_token=new_access_token
         )
 
     except JWTError as e:
@@ -299,8 +357,10 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
     )
     try:
         try:
+
             token_data = await verify_token(token)
-            print('here is the data',token_data.sub)
+
+            print('here is the data', token_data.sub)
             return token_data.sub
         except Exception:
             # Decoding the token using python-jose
@@ -310,7 +370,7 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
                 raise credentials_exception
     except JWTError:
         return "default"
-    return email
+    return email,token_data.access_token
 
 # pylint: disable=too-many-arguments
 
@@ -319,10 +379,7 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
 # later in endpoint protected
 
 
-
-
-
-@app.post('/okta_login')
+@app.post('/okta_login_cred')
 async def login(credentials: HTTPBasicCredentials = Depends(security)):
     token_url = f"{OKTA_ISSUER}/v1/token"
 
@@ -345,30 +402,44 @@ async def login(credentials: HTTPBasicCredentials = Depends(security)):
         raise HTTPException(500, detail=str(e))
 
 
-@app.post("/okta_verify_token")
+@app.post("/okta_login")
 async def okta_login(
-    credentials: HTTPAuthorizationCredentials = Depends(token_auth)
+    credentials: OktaLoginRequest
 ):
     try:
-        token_data = await verify_token(credentials.credentials)
-        user_email = token_data.sub
-        print('it is here')
+        # print(credentials)
+        token_data = await verify_token(credentials.tokens.access_token)
+        user_email = credentials.user.email
+        # print('it is here',token_data)
+        await admin_collection.delete_one(({"login": user_email}))
 
         existing_user = await admin_collection.find_one({"login": user_email})
+        print(existing_user)
         if not existing_user:
             # Create a new user in DB
             scope = token_data.scope.split() if token_data.scope else []
             new_user = {
                 "login": user_email,
+                "scope": token_data.scope,
                 "okta_id": token_data.client_id,
+                "name": credentials.user.name,
+                "locale": credentials.user.locale,
+                "preffered_username": credentials.user.preferred_username,
                 "organization_id": await map_okta_to_org(token_data.client_id),
                 "permissions": await get_default_permissions(scope),
+                "refresh_token": credentials.tokens.refresh_token,
+                "access_token_exp":credentials.tokens.access_token_exp,
+                "refresh_token_exp":credentials.tokens.refresh_token_exp,
+                "created_at": datetime.utcnow(),
+                "last_login": datetime.utcnow()
             }
             await admin_collection.insert_one(new_user)
+            print('user has been created',new_user)
 
         return {
-            "access_token": credentials.credentials,
-            "email": user_email,
+            "access_token": credentials.tokens.access_token,
+            "email": token_data.sub,
+            "scope": token_data.scope
         }
 
     except Exception as e:
@@ -3311,7 +3382,6 @@ class UpdateProfileRequest(BaseModel):
 @app.get("/profile")
 async def get_profile(current_user: str = Depends(get_current_user)):
     try:
-        print('find the current url', current_user)
         log.info(current_user)
         # Explicitly exclude company_logo field from the query
         user_record = await admin_collection.find_one(
