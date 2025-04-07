@@ -283,8 +283,8 @@ async def fetch_jwks() -> dict:
 
 async def verify_token(token: str) -> TokenData:
     """Verify and decode JWT token"""
+    print('here is token',token)
     jwks = await fetch_jwks()
-    print('here is the jwks', jwks)
 
     try:
         # 1. Get the key ID from token headers
@@ -313,6 +313,7 @@ async def verify_token(token: str) -> TokenData:
             )
 
         # 3. Verify and decode the token
+        print('it is verifying the token')
         payload = jwt.decode(
             token,
             rsa_key,
@@ -320,24 +321,27 @@ async def verify_token(token: str) -> TokenData:
             audience=OKTA_AUDIENCE,
             issuer=OKTA_ISSUER
         )
-        client_id = payload.get("cid") or payload.get("sub")
-        existing_user = await admin_collection.find_one({"okta_id": client_id})
-        if not existing_user:
-            raise HTTPException(status_code=404, detail="User not found")
-        current_time = datetime.now().timestamp()
-        exp_time_access_token = existing_user.get("access_token_exp")
-        print('the expiry time is',exp_time_access_token,exp_time_access_token - current_time)
-        if exp_time_access_token and (exp_time_access_token - current_time) < 300:  # 5 minutes
+        
+        
+        # client_id = payload.get("cid") or payload.get("sub")
+        # existing_user = await admin_collection.find_one({"okta_id": client_id})
+        # if not existing_user:
+        #     raise HTTPException(status_code=404, detail="User not found")
+        # current_time = datetime.now().timestamp()
+        # exp_time_access_token = existing_user.get("access_token_exp")
+        # print('the expiry time is',exp_time_access_token,exp_time_access_token - current_time)
+        # if exp_time_access_token and (exp_time_access_token - current_time) < 300:  # 5 minutes
             
-            refresh_token = existing_user.get("refresh_token")
-            
-            new_access_token = await exchange_refresh_token(refresh_token, client_id)
+        #     refresh_token = existing_user.get("refresh_token")
+        #     print('pausing refresh token for now')
+            # new_access_token = await exchange_refresh_token(refresh_token, client_id)
 
         return TokenData(
             client_id=payload.get("cid") or payload.get("sub"),
             scope=" ".join(payload.get("scp", [])) or payload.get("scope", ""),
-            sub=payload.get("sub"),
-            access_token=new_access_token
+            sub=payload.get("sub")
+            # ,
+            # access_token='new_access_token'
         )
 
     except JWTError as e:
@@ -357,6 +361,7 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
     )
     try:
         try:
+            print('credentials from the frontend',token)
 
             token_data = await verify_token(token)
 
@@ -368,7 +373,8 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
             email = payload.get("sub")
             if email is None:
                 raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        # print('error in auth profile',e)
         return "default"
     return email,token_data.access_token
 
@@ -407,7 +413,7 @@ async def okta_login(
     credentials: OktaLoginRequest
 ):
     try:
-        # print(credentials)
+       
         token_data = await verify_token(credentials.tokens.access_token)
         user_email = credentials.user.email
         # print('it is here',token_data)
@@ -3382,6 +3388,7 @@ class UpdateProfileRequest(BaseModel):
 @app.get("/profile")
 async def get_profile(current_user: str = Depends(get_current_user)):
     try:
+        print('get current user',current_user)
         log.info(current_user)
         # Explicitly exclude company_logo field from the query
         user_record = await admin_collection.find_one(
